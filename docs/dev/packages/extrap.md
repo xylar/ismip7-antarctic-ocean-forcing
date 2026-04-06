@@ -1,7 +1,7 @@
 # i7aof.extrap
 
 Purpose: Orchestrate horizontal and vertical extrapolation of CMIP-derived
-ct/sa to the ISMIP grid using external Fortran executables.
+ct/sa to the ISMIP grid using native Python stages.
 
 ## Public Python API (by module)
 
@@ -48,15 +48,14 @@ ct/sa to the ISMIP grid using external Fortran executables.
 ## Data model
 
 - Ensures `x`, `y` coordinates and retains only required variables for the
-  Fortran tools (target variable, time, x, y, and z/z_extrap).
+  extrapolation stages (target variable, time, x, y, and z/z_extrap).
 - Final concatenation injects ISMIP grid coordinates and related variables.
 
 ## Runtime and external requirements
 
 - Core: `xarray`, `numpy`, `dask` (scheduler control), `mpas-tools` (config/logging).
-- Tools: Fortran executables `i7aof_extrap_horizontal` and `i7aof_extrap_vertical`.
-- Environment: `HDF5_USE_FILE_LOCKING=FALSE` set by default; OMP/BLAS/MKL threads
-  set to 1 per worker; `stdbuf` used for unbuffered Fortran output when available.
+- Environment: `HDF5_USE_FILE_LOCKING=FALSE` set by default; OMP/BLAS/MKL
+  threads set to 1 per worker.
 
 ## Usage
 
@@ -84,8 +83,8 @@ ismip7-antarctic-extrap-cmip \
 
 - Time chunking computed from source metadata; chunks run serially or in a
   process pool (`spawn` start method). Each chunk writes a per-chunk input with
-  Dask `scheduler='synchronous'` for safer HDF5 writes, then runs horizontal and
-  vertical Fortran steps with unbuffered stdout/stderr captured to the same log.
+  Dask `scheduler='synchronous'` for safer HDF5 writes, then runs native
+  horizontal and vertical extrapolation steps while logging per-chunk progress.
 - Worker failures raise a `ChunkFailed(i0, i1, log_path, message)` that the parent
   logs verbosely before cancelling outstanding futures. Pool crashes log
   completed vs pending chunk indices and point to the logs directory.

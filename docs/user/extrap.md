@@ -20,8 +20,8 @@ axis.
 3. Conservative resampling from dense `z_extrap` to coarser `z` (e.g., 20 m →
    60 m) for downstream steps.
 
-Climatology processing temporarily adds a singleton `time` dimension for
-compatibility with the Fortran executables; it is removed afterward.
+Climatology processing temporarily adds a singleton `time` dimension so the
+same native Python extrapolation path can be reused; it is removed afterward.
 
 ## Configuration keys
 
