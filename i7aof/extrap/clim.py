@@ -3,7 +3,7 @@
 This mirrors the CMIP extrapolation workflow but simplifies it to a single
 pass per variable because the climatology file has no time dimension. It
 reuses shared helpers in ``i7aof.extrap.shared`` for prerequisite data,
-namelist rendering, executable invocation, and finalization.
+input preparation, and finalization.
 
 Expected input (produced by ``ismip7-antarctic-remap-clim``):
 
@@ -13,12 +13,10 @@ Outputs (per variable) are written to:
 
     workdir/<intermediate>/04_extrap/climatology/<name>/<file>_ismip<res>_<var>_extrap.nc
 
-Two external Fortran executables are invoked sequentially:
+Two native Python stages are invoked sequentially:
 
-    * i7aof_extrap_horizontal
-    * i7aof_extrap_vertical
-
-The combined namelist is rendered from the existing template.
+    * :func:`i7aof.extrap.horizontal.extrapolate_horizontal`
+    * :func:`i7aof.extrap.vertical.extrapolate_vertical`
 """
 
 import argparse
@@ -31,16 +29,16 @@ from mpas_tools.config import MpasConfigParser
 from mpas_tools.logging import LoggingContext
 
 from i7aof.config import load_config
+from i7aof.extrap.horizontal import extrapolate_horizontal
 from i7aof.extrap.shared import (
     _apply_under_ice_mask_to_file,
     _ensure_imbie_masks,
     _ensure_topography,
     _finalize_output_with_grid,
     _prepare_input_single,
-    _render_namelist,
-    _run_exe_capture,
     _vertically_resample_to_coarse_ismip_grid,
 )
+from i7aof.extrap.vertical import extrapolate_vertical
 from i7aof.grid.ismip import ensure_ismip_grid, get_res_string
 from i7aof.io import read_dataset
 from i7aof.paths import (
@@ -207,7 +205,7 @@ def main():
     parser.add_argument(
         '--keep-intermediate',
         action='store_true',
-        help='Keep temporary NetCDF / namelist files.',
+        help='Keep temporary NetCDF files.',
     )
     args = parser.parse_args()
 
@@ -246,7 +244,6 @@ def _ensure_extrapolated_file(
     prepared = os.path.join(tmp_dir, f'input_{variable}.nc')
     horiz_tmp = os.path.join(tmp_dir, f'horizontal_{variable}.nc')
     vert_tmp = os.path.join(tmp_dir, f'vertical_{variable}.nc')
-    namelist_path = os.path.join(tmp_dir, f'{variable}.nml')
     log_path = os.path.join(tmp_dir, 'logs', f'{variable}.log')
 
     # Prepare single input
@@ -273,26 +270,26 @@ def _ensure_extrapolated_file(
             logger=logger,
         )
 
-    # Render namelist
-    namelist_txt = _render_namelist(
-        file_in=prepared,
-        horizontal_out=horiz_tmp,
-        vertical_out=vert_tmp,
-        basin_file=basin_file,
-        topo_file=topo_file,
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    with open(log_path, 'a', encoding='utf-8') as logf:
+        logf.write('== Phase: horizontal ==\n')
+    extrapolate_horizontal(
+        in_path=prepared,
+        out_path=horiz_tmp,
+        basin_path=basin_file,
+        topo_path=topo_file,
         variable=variable,
+        logger=logger,
     )
-    with open(namelist_path, 'w', encoding='utf-8') as nf:
-        nf.write(namelist_txt)
 
-    # Run executables sequentially
-    for exe, phase in (
-        ('i7aof_extrap_horizontal', 'horizontal'),
-        ('i7aof_extrap_vertical', 'vertical'),
-    ):
-        _run_exe_capture(
-            exe, namelist_path, log_path, phase=phase, logger=logger
-        )
+    with open(log_path, 'a', encoding='utf-8') as logf:
+        logf.write('== Phase: vertical ==\n')
+    extrapolate_vertical(
+        in_path=horiz_tmp,
+        out_path=vert_tmp,
+        variable=variable,
+        logger=logger,
+    )
 
     if not os.path.exists(vert_tmp):
         raise FileNotFoundError(

@@ -1,13 +1,21 @@
-"""Utilities for generating Fortran extrapolation namelists.
-
-This subpackage currently ships a Jinja2 template that can be rendered to
-produce a combined horizontal + vertical extrapolation namelist consumed by
-the Fortran executables.
-"""
+"""Utilities for horizontal and vertical extrapolation on the ISMIP grid."""
 
 from importlib import resources as _resources
 
-__all__ = ['get_template_path', 'load_template_text']
+from i7aof.extrap.horizontal import (
+    extrapolate_horizontal,
+    horizontal_extrapolation,
+)
+from i7aof.extrap.vertical import extrapolate_vertical, vertical_extrapolation
+
+__all__ = [
+    'extrapolate_horizontal',
+    'extrapolate_vertical',
+    'get_template_path',
+    'horizontal_extrapolation',
+    'load_template_text',
+    'vertical_extrapolation',
+]
 
 
 def get_template_path() -> str:

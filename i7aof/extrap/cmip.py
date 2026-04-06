@@ -14,23 +14,19 @@ Produces per input file and per variable vertically extrapolated outputs::
 with ``ct_sa`` in the filename replaced by the variable name (``ct`` or
 ``sa``).
 
-Two external Fortran executables are invoked sequentially for each variable:
+Two native Python stages are invoked sequentially for each variable:
 
-    * i7aof_extrap_horizontal  (&horizontal_extrapolation namelist)
-
-    * i7aof_extrap_vertical    (&vertical_extrapolation namelist)
-
-A single combined namelist (containing both groups) is rendered from the
-Jinja2 template ``namelist_template.nml.j2`` via :func:`load_template_text`.
+    * :func:`i7aof.extrap.horizontal.extrapolate_horizontal`
+    * :func:`i7aof.extrap.vertical.extrapolate_vertical`
 
 Parallel, chunked execution
 ---------------------------
 Time is processed in chunks to limit memory and file sizes. Chunks run
 serially or in parallel (process-based) depending on configuration. Each
-chunk writes a per-chunk input, runs the Fortran executables, and records
-stdout/stderr and any Python traceback in a chunk log under
-``<out>_tmp/logs``. Abrupt worker failures are detected and reported with
-the set of completed vs. pending chunks for quick triage.
+chunk writes a per-chunk input, runs the native Python stages, and records
+progress plus any Python traceback in a chunk log under ``<out>_tmp/logs``.
+Abrupt worker failures are detected and reported with the set of completed
+vs. pending chunks for quick triage.
 
 **Supporting data (auto-generated if missing)**
 If required inputs for IMBIE basin masks or topography are absent, the
@@ -70,15 +66,15 @@ from mpas_tools.logging import LoggingContext
 
 from i7aof.cmip import get_model_prefix
 from i7aof.config import load_config
+from i7aof.extrap.horizontal import extrapolate_horizontal
 from i7aof.extrap.shared import (
     _apply_under_ice_mask_to_file,
     _ensure_imbie_masks,
     _ensure_topography,
     _finalize_output_with_grid,
-    _render_namelist,
-    _run_exe_capture,
     _vertically_resample_to_coarse_ismip_grid,
 )
+from i7aof.extrap.vertical import extrapolate_vertical
 from i7aof.grid.ismip import ensure_ismip_grid, get_res_string
 from i7aof.io import read_dataset, write_netcdf
 from i7aof.paths import get_stage_dir
@@ -97,7 +93,6 @@ class FileTask:
 
     in_path: str
     out_path: str  # final vertical output
-    namelist_path: str  # combined rendered namelist
     variable: str  # e.g. 'ct' or 'sa'
     tmp_dir: str  # directory for all intermediates for this file
 
@@ -148,11 +143,11 @@ def extrap_cmip(
       2. For each chunk, writes a per-chunk input on the ISMIP grid with
          coordinates ensured and only required variables kept.
 
-      3. Invokes the Fortran executables sequentially
-         (horizontal then vertical) using a rendered namelist.
+      3. Invokes the native Python horizontal and vertical stages
+         sequentially.
 
-      4. Captures Fortran stdout/stderr in a per-chunk log and appends a
-         Python traceback on any error for that chunk.
+      4. Captures per-chunk progress in a log and appends a Python
+         traceback on any error for that chunk.
 
       5. Concatenates vertical outputs along time and injects grid
          coordinates/variables into the final output file.
@@ -179,7 +174,7 @@ def extrap_cmip(
     variables : sequence of str, optional
         Variable names to extrapolate (default: ``ct`` and ``sa``).
     keep_intermediate : bool, optional
-        Keep horizontal temps and namelists if True; otherwise delete the
+        Keep intermediate chunk files if True; otherwise delete the
         ``*_tmp`` directory after finalization.
     num_workers : int | str | None, optional
         Number of parallel workers. Pass an integer, or ``"auto"``/``0``
@@ -218,11 +213,9 @@ def extrap_cmip(
             out_path = os.path.join(out_dir, out_base)
             stem = os.path.splitext(os.path.basename(out_path))[0]
             tmp_dir = os.path.join(os.path.dirname(out_path), f'{stem}_tmp')
-            namelist_path = os.path.join(tmp_dir, f'{var}.nml')
             task = FileTask(
                 in_path=in_file,
                 out_path=out_path,
-                namelist_path=namelist_path,
                 variable=var,
                 tmp_dir=tmp_dir,
             )
@@ -242,7 +235,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             'Extrapolate remapped CMIP ct/sa (horizontal + vertical) using '
-            'Fortran executables.'
+            'native Python stages.'
         )
     )
     parser.add_argument(
@@ -283,7 +276,7 @@ def main() -> None:
     parser.add_argument(
         '--keep-intermediate',
         action='store_true',
-        help='Keep horizontal intermediate NetCDF and namelist files.',
+        help='Keep horizontal and vertical intermediate NetCDF files.',
     )
     parser.add_argument(
         '--num_workers',
@@ -565,7 +558,6 @@ def _run_chunk_worker(
         pass
 
     try:
-        # Phase: prepare
         chunk_logger = logging.getLogger(f'{__name__}.chunk.{i0}_{i1}')
         chunk_logger.setLevel(logging.INFO)
         fh = logging.FileHandler(log_path, mode='a', encoding='utf-8')
@@ -594,61 +586,57 @@ def _run_chunk_worker(
                         logger=chunk_logger,
                     )
                 _mark_stage_done(status_path, 'prepare')
-            # Render a per-chunk namelist after paths are defined
-            namelist_contents = _render_namelist(
-                file_in=input_chunk,
-                horizontal_out=horizontal_tmp,
-                vertical_out=vertical_tmp,
-                basin_file=basin_file,
-                topo_file=topo_file,
-                variable=variable,
-            )
-            namelist_path = os.path.join(tmp_dir, f'{variable}_{i0}_{i1}.nml')
-            with open(namelist_path, 'w', encoding='utf-8') as f:
-                f.write(namelist_contents)
-        finally:
-            chunk_logger.removeHandler(fh)
-            fh.close()
 
-        # Phase: executables
-        if not status.get('horizontal', False):
-            # Remove existing output to avoid stale data if present
+            if not status.get('horizontal', False):
+                chunk_logger.info('== Phase: horizontal ==')
+                # Remove existing output to avoid stale data if present
+                try:
+                    if os.path.exists(horizontal_tmp):
+                        os.remove(horizontal_tmp)
+                except OSError:
+                    pass
+                extrapolate_horizontal(
+                    in_path=input_chunk,
+                    out_path=horizontal_tmp,
+                    basin_path=basin_file,
+                    topo_path=topo_file,
+                    variable=variable,
+                    logger=chunk_logger,
+                )
+                if not os.path.exists(horizontal_tmp):
+                    raise FileNotFoundError(
+                        f'Expected horizontal output missing: {horizontal_tmp}'
+                    )
+                _mark_stage_done(status_path, 'horizontal')
+                status = _read_status(status_path)
+
+            if not status.get('vertical', False):
+                chunk_logger.info('== Phase: vertical ==')
+                try:
+                    if os.path.exists(vertical_tmp):
+                        os.remove(vertical_tmp)
+                except OSError:
+                    pass
+                extrapolate_vertical(
+                    in_path=horizontal_tmp,
+                    out_path=vertical_tmp,
+                    variable=variable,
+                    logger=chunk_logger,
+                )
+                if not os.path.exists(vertical_tmp):
+                    raise FileNotFoundError(
+                        f'Expected vertical output missing: {vertical_tmp}'
+                    )
+                _mark_stage_done(status_path, 'vertical')
+        finally:
             try:
-                if os.path.exists(horizontal_tmp):
-                    os.remove(horizontal_tmp)
+                chunk_logger.removeHandler(fh)
             except OSError:
                 pass
-            _run_exe_capture(
-                'i7aof_extrap_horizontal',
-                namelist_path,
-                log_path,
-                'horizontal',
-                logger=chunk_logger,
-            )
-            if not os.path.exists(horizontal_tmp):
-                raise FileNotFoundError(
-                    f'Expected horizontal output missing: {horizontal_tmp}'
-                )
-            _mark_stage_done(status_path, 'horizontal')
-            status = _read_status(status_path)
-        if not status.get('vertical', False):
             try:
-                if os.path.exists(vertical_tmp):
-                    os.remove(vertical_tmp)
+                fh.close()
             except OSError:
                 pass
-            _run_exe_capture(
-                'i7aof_extrap_vertical',
-                namelist_path,
-                log_path,
-                'vertical',
-                logger=chunk_logger,
-            )
-            if not os.path.exists(vertical_tmp):
-                raise FileNotFoundError(
-                    f'Expected vertical output missing: {vertical_tmp}'
-                )
-            _mark_stage_done(status_path, 'vertical')
 
         if not os.path.exists(vertical_tmp):
             raise FileNotFoundError(
@@ -933,7 +921,7 @@ def _ensure_extrapolated_file(
         if not keep_intermediate:
             _cleanup_intermediate(task, logger)
         else:
-            logger.info('Keeping intermediate files and namelists.')
+            logger.info('Keeping intermediate files.')
 
 
 # -----------------------------
