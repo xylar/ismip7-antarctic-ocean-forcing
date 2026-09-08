@@ -245,6 +245,94 @@ present-day climatology before remapping, matching how the model datasets were p
 files already are, or state in §A10 what modellers should do outside the covered basin. The
 former would be more consistent and would remove a step everyone has to reinvent.
 
+### A9. The semi-local form with a constant salinity is the ISMIP6 non-local method — open
+
+§4.1.1 presents the local (Eq. 1) and semi-local (Eq. 2) quadratic forms as two options.  For
+a group already running the ISMIP6 non-local parameterisation, it is worth stating that the
+second is not actually a change.  Writing both out with the temperature correction in place:
+
+```text
+ISMIP6 non-local:    melt = C6 * (TF_loc + dT) * |<TF> + dT|
+Burgard semi-local:  melt = C7 * <S> * (TF_loc + dT) * |<TF> + dT|
+```
+
+Same functional form; only the decomposition of the constant differs.  With the salinity held
+constant the two are **algebraically identical**, and every `K` has an exactly equivalent
+`gamma0` -- at the protocol's published K = 8.5e-5 that is gamma0 = 11,519 m/yr, against
+MALI's production 14,500.  With a *basin-mean* salinity they differ only by the per-basin
+spread of `<S>`, which we measure at ±0.8% on our mesh (34.11 to 34.67 across 16 basins),
+and which a fitted `dT_b` largely absorbs.
+
+Since `beta_S` multiplies `S` rather than being a function of it (TEOS-10 gives 0.04%
+variation in `beta_S` across 34.2-34.8), melt is *linear* in salinity, so that ±0.8% maps
+one-to-one with no amplification.  The neglected pressure dependence of `beta_S` is larger --
+2.8% from the surface to 1800 dbar, and unlike a uniform offset it correlates with draft
+depth, so `K` does not absorb it.
+
+The local form is genuinely different; the semi-local one is a reparameterisation.  We
+implemented semi-local in MALI and then removed it on exactly this basis.
+
+**Suggestion:** say in §4.1.1 that Eq. (2) with constant salinity reduces to the ISMIP6
+non-local parameterisation, so that groups understand what adopting it does and does not
+change, and so nobody implements a second code path to reproduce what they already have.
+
+### A10. The J4 weighting actually used discards the data that carries the signal — open
+
+Table 2 lists thirteen observation years for J4, labelled PIG, DIS or both, and
+`melt_observations_target_term4.nc` carries **18** finite region-year observations.  Eq. (7)
+and §A10 describe J4 as covering "Pine Island Glacier Ice Shelf or Dotson Ice Shelf".  But
+the weighting in `parameter_selection_quadratic_example.ipynb` — the cell that produces the
+published percentiles — is
+
+```text
+t4_weights = t4_weights.where(t4_weights.region == "pig", other=0)
+t4_weights = t4_weights.where((t4_weights.year==2009) | (t4_weights.year==2012), other=0)
+```
+
+so **2 of the 18 observations** are used, and Dotson never.  The same applies to J3, where
+the target file carries seven ocean models and the notebook weights four.
+
+This is not a trivial bookkeeping point, because J4 as weighted has almost no discriminating
+power.  Comparing the local and semi-local forms on MALI's mesh, over 4000 draws of the
+targets within their uncertainties (findings F14):
+
+| J4 weighting | observations | picks a winner |
+|---|---:|---|
+| PIG, 2009 + 2012 (as published) | 2 | no — 44.5% / 55.5%, a coin flip |
+| PIG, all 13 years | 9 | no — 39.8% / 60.2% |
+| PIG + Dotson, all 13 years | 18 | **yes — 98.6% for the local form** |
+
+The reason is structural: with one shelf, J4 constrains a single amplitude, which either
+parameterisation matches by rescaling its free parameter, so the term measures almost
+nothing.  With two shelves it becomes a *relative* constraint that rescaling cannot satisfy —
+the same kind of test J2 is.
+
+**Suggestion:** state in §4.2.2 or Table 2 which region-year combinations are intended to
+carry weight, and consider making Dotson part of the standard J4 weighting.  As it stands, a
+modeller following the notebook uses a J4 that cannot distinguish between the melt modules
+the protocol offers, while the data to do so is distributed and unused.
+
+### A11. The objective cannot compare two melt modules, only parameters within one — open
+
+Eq. (3) normalises each term by `median(J_i)` taken over the parameter ensemble.  That makes
+the four terms commensurate within a single calibration, which is its purpose, but it also
+means the minimised `I` is measured in units private to that melt module's own ensemble.  Two
+different modules — say the local and semi-local quadratics, or quadratic versus PICO — each
+produce an `I` normalised by their own medians, so **the values are not comparable**, and a
+smaller minimised `I` does not mean a better melt module.
+
+The protocol therefore gives a parameter-*selection* procedure but no model-*selection*
+criterion, while §4.1 offers several modules and §4.3 works three of them.  A group that has
+to choose one (as we do) has nothing to appeal to.
+
+We compared modules by taking each term's *unnormalised* weighted misfit at that module's own
+best parameter, and asking how often one beats the other across draws of the targets — but
+that is our invention, not the protocol's.
+
+**Suggestion:** say explicitly that `I` is not comparable across melt modules, and if
+possible suggest how groups should choose between the modules on offer.  Even "use whichever
+your model already implements unless you have a reason not to" would be useful guidance.
+
 ---
 
 ## Part B — this repository
@@ -333,6 +421,27 @@ manifest file the examples read, so a modeller can tell whether they are reprodu
 published numbers. This matters because the 31 July 2026 focus-group update notes the median
 `K` shifted when new datasets were added.
 
+### B6. `calculate_objective_function` hard-codes the bin count but derives the basin count — proposed
+
+```text
+nBasins = int(t1_model.basins.values.max())
+...
+nBins = 10
+```
+
+The basin count comes from the data; the bin count is a literal.  A model whose BFRN field
+happened to have a different number of bins would fail silently rather than loudly.
+**Change:** derive it the same way, `nBins = len(t2_model.BFRN_bins)`.
+
+### B7. `calculate_objective_function` takes an unused `reso` argument — proposed
+
+`reso` is the second positional parameter and is never referenced in the body; every term
+arrives already aggregated to basins, bins or regions, so no cell area is needed.  It is
+harmless but misleading — it suggests the function is resolution-aware when the aggregation
+that used the resolution happened earlier, in `calculate_term1` and friends.  This matters
+for unstructured meshes, where there is no single `reso` to pass and we had to supply a dummy
+value.  **Change:** drop the parameter, as for B3.
+
 ---
 
 ## Log
@@ -347,4 +456,5 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |
 | 2026-09-08 | A7 corrected: |f| varies ~12% across ice-shelf latitudes (1.300e-4 at 63S to 1.453e-4 at 85S), not a factor of two, and multimelt's 1.4e-4 sits at 73.7S. Downgraded from open to minor. |
 | 2026-09-08 | Working assumptions recorded for A3 and A4 so implementation can proceed; both still need a focus-group answer. |
+| 2026-09-08 | Added A9 (semi-local with constant salinity is the ISMIP6 non-local method), A10 (the published J4 weighting uses 2 of 18 observations and cannot discriminate between melt modules, while PIG+Dotson can), A11 (the objective is not comparable across melt modules), B6 and B7. |
 | 2026-09-08 | A1 reframed: the geometry and grid/code requirements are separable, not in conflict; the ask is a clarification plus guidance for groups without a present-day initialisation. A2 confirmed intended; the ask is a sentence explaining why. Both moved open → proposed. |

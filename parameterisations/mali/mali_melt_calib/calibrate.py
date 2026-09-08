@@ -35,6 +35,7 @@ import xarray as xr
 
 from mali_melt_calib.datasets import (
     DEFAULT_DATA_ROOT,
+    OBS_YEARS,
     OCEAN_MODELS,
     RECOMMENDED_MODELS,
     RECOMMENDED_OBS_YEARS,
@@ -191,7 +192,9 @@ def load_targets(data_root=DEFAULT_DATA_ROOT):
     )
 
 
-def unit_aggregates(ensemble_dir, param_value, static, mask=None):
+def unit_aggregates(
+    ensemble_dir, param_value, static, mask=None, models=None, years=None
+):
     """
     Aggregate every ocean state's melt to the four terms, at unit parameter.
 
@@ -209,6 +212,13 @@ def unit_aggregates(ensemble_dir, param_value, static, mask=None):
         From :func:`load_mali_static`.
     mask : xarray.DataArray, optional
         Cells to aggregate over; defaults to MALI's own floating cells.
+    models : sequence of str, optional
+        Ocean models to aggregate for J3; defaults to every model in
+        :data:`~mali_melt_calib.datasets.OCEAN_MODELS` whose run directory is
+        present.
+    years : sequence of int, optional
+        Observation years for J4; defaults to every year in
+        :data:`~mali_melt_calib.datasets.OBS_YEARS` that is present.
 
     Returns
     -------
@@ -233,8 +243,14 @@ def unit_aggregates(ensemble_dir, param_value, static, mask=None):
     # J3: warm minus cold basin-mean melt, per ocean model.  Regional models
     # only constrain the basins their domain covers.
     covered_by = {label: covered for _, label, covered in OCEAN_MODELS}
+    if models is None:
+        models = [
+            label
+            for _, label, _ in OCEAN_MODELS
+            if os.path.isdir(os.path.join(ensemble_dir, f'{label}_cold'))
+        ]
     per_model = []
-    for label in RECOMMENDED_MODELS:
+    for label in models:
         means = {}
         for state in ('cold', 'warm'):
             melt = unit(f'{label}_{state}')
@@ -250,8 +266,14 @@ def unit_aggregates(ensemble_dir, param_value, static, mask=None):
     t3 = xr.concat(per_model, dim='model')
 
     # J4: PIG and Dotson integrated melt, per observation year
+    if years is None:
+        years = [
+            y
+            for y in OBS_YEARS
+            if os.path.isdir(os.path.join(ensemble_dir, f'obs_{y}'))
+        ]
     per_year = []
-    for year in RECOMMENDED_OBS_YEARS:
+    for year in years:
         agg = integrate_by_group(
             unit(f'obs_{year}'),
             area,
@@ -272,7 +294,7 @@ def _mae(predicted, observed, weights, dims, skipna=True):
     return abs(weights * (predicted - observed)).mean(dims, skipna=skipna)
 
 
-def term_misfits(units, targets, parameters):
+def term_misfits(units, targets, parameters, t4_regions=('pig',)):
     """
     Weighted mean absolute error of each term, as a function of the parameter.
 
@@ -300,9 +322,14 @@ def term_misfits(units, targets, parameters):
     # The protocol weights J4 to PIG alone (t4_weights zeroes Dotson), so the
     # misfit must be restricted the same way; averaging Dotson in as well
     # reverses which form appears to fit better.
-    t4_model = units['t4'].sel(region='pig')
+    regions = (
+        list(units['t4'].region.values)
+        if t4_regions is None
+        else list(t4_regions)
+    )
+    t4_model = units['t4'].sel(region=regions)
     t4_target = targets['t4_mean'].sel(
-        region='pig', year=units['t4'].year.values
+        region=regions, year=units['t4'].year.values
     )
 
     return {
@@ -318,7 +345,9 @@ def term_misfits(units, targets, parameters):
         't3': _mae(
             units['t3'] * scale, t3_target, 1.0, ['model', 'basins']
         ).values,
-        't4': _mae(t4_model * scale, t4_target, 1.0, ['year']).values,
+        't4': _mae(
+            t4_model * scale, t4_target, 1.0, ['year', 'region']
+        ).values,
     }
 
 
@@ -346,9 +375,22 @@ def mask_disagreement(static):
     }
 
 
-def toolbox_terms(units, targets, param_values):
+def toolbox_terms(
+    units,
+    targets,
+    param_values,
+    t3_models=RECOMMENDED_MODELS,
+    t4_regions=('pig',),
+    t4_years=RECOMMENDED_OBS_YEARS,
+):
     """
     Assemble the arguments ``calculate_objective_function`` expects.
+
+    ``t3_models``, ``t4_regions`` and ``t4_years`` set which summands carry
+    non-zero weight.  The defaults reproduce the weighting of the published
+    quadratic example -- four ocean models, and PIG alone in 2009 and 2012 --
+    which is *narrower* than protocol Table 2 suggests is available.  Pass
+    ``None`` for any of them to weight everything the ensemble provides.
 
     The toolbox wants each modelled term indexed by ``(p1, p2, ...)``, where
     ``p1`` is the melt parameter being selected and ``p2`` a second parameter
@@ -384,6 +426,10 @@ def toolbox_terms(units, targets, param_values):
             'basins': t3_model.basins.values,
         },
     )
+    if t3_models is not None:
+        t3_weights = t3_weights.where(
+            t3_weights.model.isin(list(t3_models)), other=0
+        )
     t4_weights = xr.DataArray(
         np.ones(
             (
@@ -397,8 +443,13 @@ def toolbox_terms(units, targets, param_values):
             'year': targets['t4_mean'].year.values,
         },
     )
-    # only PIG, and only the years the ensemble actually ran
-    t4_weights = t4_weights.where(t4_weights.region == 'pig', other=0)
+    if t4_regions is not None:
+        t4_weights = t4_weights.where(
+            t4_weights.region.isin(list(t4_regions)), other=0
+        )
+    years = units['t4'].year.values if t4_years is None else list(t4_years)
+    t4_weights = t4_weights.where(t4_weights.year.isin(list(years)), other=0)
+    # a year the ensemble did not run cannot contribute whatever the weighting
     t4_weights = t4_weights.where(
         t4_weights.year.isin(list(units['t4'].year.values)), other=0
     )

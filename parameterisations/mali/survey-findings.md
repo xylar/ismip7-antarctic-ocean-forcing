@@ -562,11 +562,30 @@ The full protocol procedure -- 100,000 draws of the four term weights and of the
 within their uncertainties, each draw minimising Eq. (3) over the parameter grid -- applied to
 the 22-run MALI ensemble.  This is the deliverable the ISMIP7 projections need.
 
+With the **published weighting** (four ocean models; PIG alone in 2009 and 2012), on 11 states:
+
 | | 5th | 50th | 95th | mode |
 |---|---:|---:|---:|---:|
 | **Burgard local, MALI mesh** (`K`) | **5.00e-5** | **9.00e-5** | **1.45e-4** | 7.25e-5 |
 | published 8 km, protocol's own implementation (`K`) | 4.75e-5 | 8.50e-5 | 1.375e-4 | -- |
 | semi-local = ISMIP6 non-local, MALI mesh (`gamma0`, m/yr) | 7792 | 17280 | 29140 | 9825 |
+
+Extending to all **28 states** and weighting everything the protocol distributes (all seven
+ocean models, both shelves, all thirteen observation years) tightens the distributions and
+lowers the medians -- more data, more constraint:
+
+| weighting | | 5th | 50th | 95th |
+|---|---|---:|---:|---:|
+| published | local `K` | 5.00e-5 | 9.25e-5 | 1.45e-4 |
+| **full** | **local `K`** | **5.00e-5** | **7.75e-5** | **1.15e-4** |
+| published | semi-local `gamma0` | 7792 | 17280 | 29140 |
+| **full** | **semi-local `gamma0`** | **7453** | **12200** | **2.10e4** |
+
+The published-weighting numbers are reproduced from the 11-state ensemble to within one grid
+step, as they must be, since the extra states carry zero weight; the small median shift
+(9.00e-5 to 9.25e-5) is the random draw stream changing shape, not a change in the data.
+
+Figure: ``mali_melt_parameter_distribution.png`` in the workspace root.
 
 **The local result lands essentially on the published distribution** -- 5th and 50th within a
 single grid step (0.25e-5) of the protocol's own 8 km numbers, 95th within three.  That is a
@@ -606,6 +625,9 @@ minimised over its own parameter -- gives:
 | J3 | **0.0%** | **−8.0%** | **semi-local** |
 | J4 | 46.1% | −9.6% | no clear signal |
 
+> **Superseded for J4 by F14.** These use the 11-state `recommended` ensemble.  With all 28
+> states and Dotson included, J4 becomes decisive for the local form.
+
 So of the four terms, exactly two discriminate, and **they point in opposite directions**:
 J2, the buttressing-weighted present-day distribution, favours local; J3, the sensitivity of
 melt to ocean warming, favours semi-local.  J1 has no power for the reason above.
@@ -624,6 +646,43 @@ semi-local.
 **Conclusion: the evidence does not presently justify preferring either form.** One term each,
 in opposite directions, with the two potential tie-breakers both under-powered by the choice of
 the reduced ensemble rather than by anything physical.
+
+### F14. With all 28 states, the local form wins two of the four terms decisively
+
+F13 found only J2 and J3 discriminating, and pointed at the reduced ensemble as the reason J4
+had no power.  Running all 28 states settles it -- and J4 changes side:
+
+| term | 11 states: local wins | 28 states: local wins | verdict on 28 |
+|---|---:|---:|---|
+| J1 | 35.9% | 36.1% | no signal |
+| J2 | 96.5% | **96.8%** | **local**, +19.4% |
+| J3 | 0.0% | 0.0% | **semi-local**, −10.1% |
+| J4 | 46.1% | **98.7%** | **local**, +15.3% |
+
+**J4's power comes from Dotson, not from the extra years.** Decomposing it:
+
+| J4 variant | observations | local wins | margin |
+|---|---:|---:|---:|
+| PIG, 2009 + 2012 (the published weighting) | 2 | 44.5% | −11.0% |
+| PIG, all 13 years | 9 | 39.8% | −1.7% |
+| **PIG + Dotson, all 13 years** | **18** | **98.6%** | **+15.2%** |
+
+The reason is structural.  With PIG alone, J4 constrains a single amplitude, and the
+semi-local form simply rescales `gamma0` to match it -- so the term measures almost nothing.
+Adding Dotson makes J4 a *relative* constraint between two shelves, and no rescaling can fix
+a wrong ratio.  It becomes the same kind of test as J2: a distribution rather than a level.
+Both forms sit in a sensible range on the individual years (e.g. PIG 1994: observed 43.8,
+local 42.0, semi-local 30.1 Gt/yr), so this is a genuine difference, not a degenerate
+comparison.
+
+**Where that leaves the choice.** Two terms now favour local decisively and one favours
+semi-local decisively, so the evidence has moved from "no signal either way" (F13) to a
+majority for local -- but it is a majority, not a consensus, and J3 is the term about
+sensitivity to ocean warming, which is what a projection extrapolates.  The honest summary is
+that local fits present-day melt *distribution* better (J2 within basins, J4 between shelves)
+while semi-local fits melt *sensitivity* better (J3).
+
+Figure: ``mali_melt_term_comparison.png`` in the workspace root.
 
 ---
 

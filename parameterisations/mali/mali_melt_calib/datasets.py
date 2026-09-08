@@ -12,7 +12,10 @@ The sets follow protocol Table 2 and the focus group's 31 July 2026 update:
   circum-Antarctic cold/warm pairs, and PIG in 2009 and 2012.  7 states.
 * ``recommended`` -- adds the two regional cold/warm pairs marked +, which the
   focus group strongly suggests.  11 states.  **This is the default.**
-* ``all`` -- every state distributed for ISMIP7.  26 states.
+* ``all`` -- every state distributed for ISMIP7: all seven ocean models of
+  protocol Table 2 (AIS1-AIS7) and all thirteen observation years.  28 states.
+  This is what the ``model`` coordinate of the J3 target file expects, so only
+  this subset exercises every target the protocol ships.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ OCEAN_MODELS = [
     ('Naughten_FESOM_MMM_{state}_v2_', 'naughten_ais_2', None),
     ('Jourdain-Naughten_NEMO-MITgcm_{state}_', 'jourdain_naughten', (9, 14)),
     ('Naughten_MITamu-MITwed_{state}_', 'naughten_naughten', (9, 14)),
+    ('Haid_FESOM_{state}_', 'haid', (14,)),
 ]
 
 #: all years of Amundsen near-ice-shelf ocean observations
