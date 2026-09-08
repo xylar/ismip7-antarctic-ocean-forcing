@@ -188,6 +188,7 @@ def setup_run(
     masks_file,
     forcing_file,
     graph_file=None,
+    ntasks=None,
     melt_k=8.5e-5,
     sin_slope=0.0051117,
     coriolis=1.4e-4,
@@ -207,7 +208,12 @@ def setup_run(
     mesh_file, masks_file, forcing_file : str
         Inputs; symlinked into the run directory.
     graph_file : str, optional
-        Graph partition file, for multi-task runs.
+        Graph partition file, for multi-task runs.  It is linked as
+        ``graph.info.part.<ntasks>``, which is the name MALI looks for given
+        the default ``config_block_decomp_file_prefix``.
+    ntasks : int, optional
+        Number of MPI tasks the partition file is for.  Required with
+        ``graph_file``.
     melt_k, sin_slope, coriolis : float, optional
         ISMIP7 melt parameters.
     semi_local : bool, optional
@@ -230,7 +236,11 @@ def setup_run(
         'forcing.nc': forcing_file,
     }
     if graph_file is not None:
-        links['graph.info'] = graph_file
+        if ntasks is None:
+            raise ValueError('ntasks is required when graph_file is given')
+        # MALI builds the name from config_block_decomp_file_prefix, which
+        # defaults to 'graph.info.part.', plus the task count
+        links[f'graph.info.part.{ntasks}'] = graph_file
     for name, target in links.items():
         link = os.path.join(run_dir, name)
         if os.path.lexists(link):
