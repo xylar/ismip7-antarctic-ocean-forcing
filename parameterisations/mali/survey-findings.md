@@ -675,6 +675,23 @@ Both forms sit in a sensible range on the individual years (e.g. PIG 1994: obser
 local 42.0, semi-local 30.1 Gt/yr), so this is a genuine difference, not a degenerate
 comparison.
 
+**Both verdicts survive scrutiny.** J3's magnitude is dominated by one dataset --
+`mathiot_warm` has a mean draft thermal forcing of 3.57 K against ~1.25 K for the other warm
+states, and melt goes as TF², so it produces 40,698 Gt/yr against ~3,000-10,000 for the rest
+(genuine forcing, not a defect: the 8 km source field has mean TF 4.68 K).  Since J3 is the
+only term favouring semi-local, it matters whether that rests on the outlier.  It does not:
+
+| J3 subset | local wins | margin |
+|---|---:|---:|
+| all 7 models | 0.0% | −10.1% |
+| excluding `mathiot` | 0.0% | −12.7% |
+| `mathiot` alone | 0.0% | −5.9% |
+| the published 4 models | 0.0% | −7.9% |
+
+Semi-local wins every draw under every subset, and removing the outlier *strengthens* the
+result.  A newly-added state also verifies against the Python reference to 6.8e-16, and all
+28 runs give finite, physically plausible totals.
+
 **Where that leaves the choice.** Two terms now favour local decisively and one favours
 semi-local decisively, so the evidence has moved from "no signal either way" (F13) to a
 majority for local -- but it is a majority, not a consensus, and J3 is the term about
