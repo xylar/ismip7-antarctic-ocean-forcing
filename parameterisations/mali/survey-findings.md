@@ -401,6 +401,36 @@ The neglected pressure dependence of `beta_S` is larger — 2.8% from the surfac
 using the surface value — and unlike a uniform offset it correlates with draft depth, so `K`
 does not absorb it.
 
+### F8. MALI's vertical interpolation to the draft is exact
+
+F6 checked the melt *expression* by feeding the Python reference MALI's own ``TFdraft`` and
+``Sdraft``, which deliberately says nothing about how those were produced.  Checking the
+interpolation independently -- a plain ``np.interp`` in depth, written from the protocol
+rather than transliterated from the Fortran -- gives, on the 8 km climatology over 109,412
+melting cells:
+
+| code path | cells | max │dTF│ | max │dS│ |
+|---|---:|---:|---:|
+| interior (linear between layer centres) | 102,603 | 4.4e-16 | 7.1e-15 |
+| above the shallowest centre | 508 | 0 | 0 |
+| below the deepest centre | 219 | 0 | 0 |
+| layer below the draft is beneath the bed | 6,082 | 0 | 0 |
+
+All four paths agree to round-off, so both halves of the melt calculation are now verified.
+
+**The trap this exposed.** The first attempt at this check disagreed by up to 7.9e-3 K, and
+the cause was not the interpolation: **the diagnostic run evolves the geometry**.  Melt is
+applied over the one-day step, thinning the ice by up to **1.67 m**, so the ``lowerSurface``
+and ``thickness`` written to ``output_melt.nc`` are *post*-step while ``TFdraft`` was computed
+*pre*-step.  Comparing against the output geometry therefore compares two different drafts.
+Reconstructing the initial draft from ``mesh.nc`` (``-rho_i/rho_sw * H``, or the bed where
+grounded, with the run's 910/1028) collapsed the discrepancy from 7.9e-3 to 4.4e-16.
+
+This does not affect the melt field, which is computed from the initial geometry, and the
+calibration terms use melt, ``areaCell`` and the masks, none of which drift.  But **any
+diagnostic that pairs output geometry with output melt is inconsistent by up to a metre of
+draft**, which is worth knowing before the Compass port writes its own analysis.
+
 ---
 
 ## Reference paths
