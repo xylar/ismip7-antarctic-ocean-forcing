@@ -225,21 +225,20 @@ guess for each. Each row names what we assume and what it costs if the answer di
 | **Q2** | Calibrate on `ais_4to20km.20250625.nc`, the newest vintage | Re-run phases 3–6; all vintages are geometrically identical (findings F3), so the risk is near zero |
 | **Q3** | **Implement it.** Add the Burgard et al. (2022) *local* quadratic (Eq. 1) with a constant Antarctic-mean slope as a new `config_basal_mass_bal_float` option; calibrate `K` and also report the ISMIP6-form `gamma0` | Wasted MALI development, but the calibration pipeline is unchanged — the toolbox is parameter-agnostic, so we fall back to calibrating `gamma0` |
 | **Q7** | `config_ocean_data_extrapolation = .false.` — the ISMIP7 TF is already extrapolated into cavities on the 8 km grid | Re-run phase 4 with extrapolation on; cheap |
-| **Q11** | The mask tool goes in MPAS-Tools at `landice/mesh_tools_li/interpolate_ismip7_masks_to_mali.py`, branch `add-ismip7-mali-masks` | Move the script to Compass |
+| **Q11** | pyremap does the remapping (§5.4); the driver script goes in `MPAS-Tools/landice`, branch `add-ismip7-mali-masks` | Move the script to Compass |
 | **Q13** | Build MALI **without** Albany, since `config_velocity_solver = 'none'` | Use the existing Albany build (below) |
-| **A3** | Follow the **code**: continuous `U(0,1)` weights, not Bernoulli `{0,1}` inclusion. The published percentiles came out of the code as it is, so this is what reproduces them | Re-run the optimisation; seconds of CPU |
-| **A4** | Constant slope, computed as the area-weighted mean over floating cells **on our own mesh** — the notebook's own advice that it "should match the geometry". Report the value explicitly | Re-run with the published constant; note `K` is not comparable across slope conventions |
+| **A3** | ~~Assumption~~ **confirmed**: continuous `U(0,1)` weights reproduce all three published percentiles exactly (phase 2). The manuscript text is what is out of date | n/a |
+| **A4** | Constant slope, computed on our own mesh per the notebook's advice that it "should match the geometry". On Bedmap3 at 8 km this gives sinθ = 0.0051117, matching the paper's 0.005. Report the value explicitly | Re-run with the published constant; `K` is not comparable across slope conventions |
 
 Verified while setting these up: Chrysalis + gnu + openmpi is an Albany-supported combination
 (`compass/deploy/albany_supported.txt`), and `/lcrc/soft/climate/compass/chrysalis/spack/`
 already holds both `dev_compass_1_2_0_gnu_openmpi` and `..._gnu_openmpi_albany`. So the Q13
 fallback costs nothing if we need `FO` later.
 
-**Still to ask, in priority order:** Q3 (does the focus of MALI development agree?), Q11 (is
-MPAS-Tools the right home, and should `grid_and_mapping.py` move out of
-`output_processing_li/`?), Q7, Q2, Q13, Q1. Plus A3 and A4 to the focus group — both are
-recorded in [`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md) with our
-guess noted.
+**Still to ask, in priority order:** Q3 (do the MALI developers agree?), Q11 (script name
+and home), Q7, Q2, Q13, Q1. Plus A4 and A7 to the focus group; A3 is now answered by our
+replication. All are recorded in
+[`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md).
 
 ### 5.3 Q3 in detail — what we are implementing
 
@@ -260,7 +259,35 @@ Scope for the first pass:
 * new registry fields for `K` and the constant slope; `S_loc` needs a **3-D salinity input
   stream** alongside the existing TF one, which is the largest piece of new plumbing —
   compass's ocean step currently remaps only `tf`.
-* `f` from `latCell`; no new input needed.
+* `f` **constant** at 1.4e-4, matching multimelt, rather than from `latCell`. A
+  latitude-varying `f` would shift `K` away from the published value; raised as feedback A7.
+
+### 5.4 Q11 in detail — the mask tool
+
+Use **pyremap**, not a hand-rolled ESMF wrapper. Generalising
+`grid_and_mapping.build_mapping_file` is dropped: it hardcodes MALI as the source
+(`-s mali_scripfile -d ismip7_scripfile`) and pyremap removes the need for it.
+
+```python
+remapper = Remapper(ntasks=..., map_filename=..., method='neareststod')
+remapper.src_from_proj(ismip_grid_file, 'ismip8km', proj_str=EPSG3031)
+remapper.dst_from_mpas(mali_mesh_file, 'ais4to20km')
+remapper.build_map(logger=logger)
+masks_on_mali = remapper.remap_numpy(masks)
+```
+
+pyremap is already an `i7aof` dependency, so this adds nothing new. Verified that all four
+ISMIP7 mask files carry real projected coordinates (−3040 km…+3040 km at 8 km, 761 points),
+which is what `src_from_proj` needs. Nearest-neighbour (`neareststod`) throughout, since
+every field is categorical.
+
+The script should also emit the cross-tabulation against the existing ISMIP6
+`regionCellMasks`, so the off-by-one in findings F2 is asserted rather than rediscovered.
+
+Portability nit to raise in the PR: `build_mapping_file` decides whether to use `srun` from
+`hostname.startswith('nid')`, which is Cori/Perlmutter-specific and would not fire on
+Chrysalis.
+
 ---
 
 ## 6. Phased work plan
@@ -277,9 +304,9 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | Phase | Work | Blocked by | Output |
 |---|---|---|---|
 | **0. Feedback log** | append to `protocol-and-toolbox-questions.md` throughout; do not defer to the end | — | notes for Ronja; items for the PR |
-| **1. Scaffold** | pixi env; package skeleton + CLI; config system; dataset registry with checksums | — | `mali-melt-calib inputs` runs green |
-| **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; end-to-end replication of the published quadratic numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) as a regression test | — | `terms.py` + tests |
-| **3. Mesh preparation** | `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools reusing `grid_and_mapping.py`; assemble the mesh file from `ais_4to20km.20250625.nc`, asserting the F2 basin mapping | — | MPAS-Tools PR + `mali-melt-calib mesh` |
+| **1. Scaffold** ✅ | pixi env; package skeleton + CLI | — | `pixi.toml`, `mali_melt_calib/` |
+| **2. Terms on unstructured meshes** ✅ | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; **replication of the published quadratic numbers reproduces all three percentiles exactly** | — | `terms.py`, `quadratic.py`, `replicate.py`, 16 tests |
+| **3. Mesh preparation** | pyremap-based mask script in `MPAS-Tools/landice` (§5.4); assemble the mesh file from `ais_4to20km.20250625.nc`, asserting the F2 basin mapping | — | MPAS-Tools PR + `mali-melt-calib mesh` |
 | **4. Forcing remap** | 8 km → MALI-mesh remap of TF **and `so`** for 11 (then 26) ocean states | — | `mali-melt-calib forcing` |
 | **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany | — | MALI branch |
 | **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
