@@ -290,6 +290,23 @@ with the intended form commented out above it. The Globus-relative layout is the
 placeholder as the documented default, and define the `obs/` paths from the same root rather
 than by walking up two levels.
 
+### B4b. The worked example uses two different ice densities — proposed
+
+`multimelt.constants` sets `rho_i = 917.0`, which is what its `melt_factor` is built from,
+but `parameter_selection_quadratic_example.ipynb` defines its own `ice_density = 918` and
+uses that to convert the melt rate from m of ice to kg m⁻² yr⁻¹.
+
+Ice density appears twice in protocol Eq. (1) — once in the `(rho_o / rho_i)` factor and once
+in the conversion to a mass flux — and the two should cancel exactly, leaving melt independent
+of the value chosen. Using 917 in one place and 918 in the other leaves a spurious factor of
+918/917, about 0.1%.
+
+That is far too small to matter for the calibration, and it is folded into the published `K`
+in any case. But it took some care to disentangle when writing an implementation intended to
+agree with the reference, and it will do so again for the next group.
+
+**Change:** use a single ice density, taken from `multimelt.constants`, in both places.
+
 ### B5. Which dataset versions the examples expect is implicit — proposed
 
 Filenames carry versions, and in `ocean_modelling_data` both `v2` and `v3` of several
@@ -314,6 +331,7 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | Date | Change |
 |---|---|
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
+| 2026-09-08 | Added B4b: the worked example uses rho_i = 917 in the melt factor and 918 in the mass conversion, leaving a spurious 0.1% factor where the two should cancel. |
 | 2026-09-08 | Added A8: the observational J4 datasets are distributed unfilled (6% coverage) while the regional model datasets are climatology-filled. |
 | 2026-09-08 | A3 settled by replication: continuous U(0,1) reproduces all three published percentiles exactly, so the manuscript text is what needs updating. |
 | 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |

@@ -26,6 +26,8 @@ A4.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 #: seconds per year, as used by multimelt
@@ -53,6 +55,76 @@ F_CORIOLIS = 0.00014
 ICE_DENSITY = 918.0
 
 
+@dataclass(frozen=True)
+class Constants:
+    """
+    The physical constants entering protocol Eq. (1).
+
+    Two sets matter here.  ``MULTIMELT`` reproduces the reference
+    implementation the published calibration used, and ``MALI`` uses the values
+    MALI itself compiles in, so that a MALI melt field can be checked against
+    this formula without the constants confounding the comparison.
+
+    Attributes
+    ----------
+    c_o : float
+        Specific heat capacity of seawater, J kg-1 K-1.
+    latent_heat : float
+        Latent heat of fusion of ice, J kg-1.
+    gravity : float
+        Gravitational acceleration, m s-2.
+    beta_s : float
+        Haline contraction coefficient, PSU-1.
+    coriolis : float
+        Coriolis parameter magnitude, s-1.
+    rho_ice : float
+        Ice density appearing in the (rho_o / rho_i) factor of Eq. (1),
+        kg m-3.
+    rho_ice_flux : float
+        Ice density used to convert a melt rate in m of ice to a mass flux,
+        kg m-3.  Normally identical to ``rho_ice``, in which case the two
+        cancel and the result is independent of ice density.  They differ in
+        the protocol's worked example, which takes 917 in the formula and 918
+        in the conversion, leaving a spurious factor of 918/917.
+    rho_ocean : float
+        Seawater density, kg m-3.
+    """
+
+    c_o: float
+    latent_heat: float
+    gravity: float
+    beta_s: float
+    coriolis: float
+    rho_ice: float
+    rho_ice_flux: float
+    rho_ocean: float
+
+
+#: constants of the protocol's reference implementation (multimelt)
+MULTIMELT = Constants(
+    c_o=3974.0,
+    latent_heat=334000.0,
+    gravity=9.81,
+    beta_s=0.000786,
+    coriolis=0.00014,
+    rho_ice=917.0,
+    rho_ice_flux=918.0,
+    rho_ocean=1028.0,
+)
+
+#: constants MALI compiles in, from li_constants and the default namelist
+MALI = Constants(
+    c_o=3.974e3,
+    latent_heat=335.0e3,
+    gravity=9.80616,
+    beta_s=7.86e-4,
+    coriolis=1.4e-4,
+    rho_ice=910.0,
+    rho_ice_flux=910.0,
+    rho_ocean=1028.0,
+)
+
+
 def u_factor(salinity):
     """
     The velocity-scale factor of Jenkins et al. (2018).
@@ -74,7 +146,12 @@ def u_factor(salinity):
 
 
 def local_quadratic_melt(
-    k, thermal_forcing, salinity, slope, thermal_forcing_avg=None
+    k,
+    thermal_forcing,
+    salinity,
+    slope,
+    thermal_forcing_avg=None,
+    constants=None,
 ):
     """
     Melt rate from the quadratic local parameterisation, in kg m-2 yr-1.
@@ -110,15 +187,33 @@ def local_quadratic_melt(
     if thermal_forcing_avg is None:
         thermal_forcing_avg = thermal_forcing
 
+    if constants is None:
+        melt_factor = MELT_FACTOR
+        u = u_factor(salinity)
+        rho_ice = ICE_DENSITY
+    else:
+        melt_factor = (
+            constants.rho_ocean
+            * constants.c_o
+            / (constants.rho_ice * constants.latent_heat)
+        )
+        u = (
+            (constants.c_o / constants.latent_heat)
+            * constants.beta_s
+            * (constants.gravity / (2.0 * abs(constants.coriolis)))
+            * salinity
+        )
+        rho_ice = constants.rho_ice_flux
+
     melt_m_per_s = (
         k
-        * MELT_FACTOR
-        * u_factor(salinity)
+        * melt_factor
+        * u
         * thermal_forcing
         * abs(thermal_forcing_avg)
         * np.sin(slope)
     )
-    return melt_m_per_s * SECONDS_PER_YEAR * ICE_DENSITY
+    return melt_m_per_s * SECONDS_PER_YEAR * rho_ice
 
 
 def draft_slope(draft, dx, dy, x_dim='x', y_dim='y'):

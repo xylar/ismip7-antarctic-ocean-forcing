@@ -283,8 +283,27 @@ Scope for the first pass:
 * new registry fields for `K` and the constant slope; `S_loc` needs a **3-D salinity input
   stream** alongside the existing TF one, which is the largest piece of new plumbing —
   compass's ocean step currently remaps only `tf`.
-* `f` **constant** at 1.4e-4, matching multimelt, rather than from `latCell`. A
-  latitude-varying `f` would shift `K` away from the published value; raised as feedback A7.
+* `f` **constant** at 1.4e-4, matching the reference implementation, rather than from
+  `latCell`. A latitude-varying `f` would shift `K` away from the published value; raised as
+  feedback A7.
+
+**Algorithm from the protocol, constants from MALI.** The formula is protocol Eq. (1), but
+`cp_seawater`, `latent_heat_ice`, `gravity` and the ice and ocean densities are MALI's own,
+from `li_constants` and the namelist — not the reference implementation's. They differ
+slightly (that implementation uses `L_i = 334` kJ/kg against MALI's 335, and `g = 9.81`
+against 9.80616), so at the same `K` melt differs by a few tenths of a percent. That is far
+inside the parametric spread the calibration explores — the 5th-to-95th range spans a factor
+of about three — and `K` absorbs any constant offset regardless. Agreement with the reference
+implementation is therefore a **sanity check, not a requirement**.
+
+The one new physical constant, the haline contraction coefficient `beta_S = 7.86e-4` PSU⁻¹,
+is added to `li_constants` where MALI's other physical constants live.
+
+`K` and the slope defaults are the published 8 km values, flagged **provisional** in the
+Registry: both were obtained with the reference implementation's constants on a different
+grid, and `K` absorbs the slope, the Coriolis parameter and the constants, so production runs
+should use a value calibrated with MALI on the mesh being run — which is what the rest of
+this plan produces.
 
 ### 5.4 Q11 in detail — the mask tool
 
@@ -332,7 +351,7 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | **2. Terms on unstructured meshes** ✅ | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; **replication of the published quadratic numbers reproduces all three percentiles exactly** | — | `terms.py`, `quadratic.py`, `replicate.py`, 16 tests |
 | **3. Mesh preparation** ✅ | `interpolate_ismip7_masks_to_mali.py` in `MPAS-Tools/landice/mesh_tools_li`, using pyremap; basins, BFRN bins, floating mask and PIG/Dotson regions on the mesh, with a bidirectional cross-check against `regionCellMasks` | — | MPAS-Tools `f7407bc6`; `work/mesh/ais_4to20km_ismip7_masks.nc` |
 | **4. Forcing remap** ✅ | `forcing.py` remaps TF **and salinity** for the 11 recommended states (26 available) via pyremap, in compass's field names and dimension order; `datasets.py` is the shared ocean-state registry | — | `work/forcing/ocean_forcing_*.nc` |
-| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany | — | MALI branch |
+| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany; verify against `quadratic.py` on the same drafts | — | MALI branch |
 | **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
 | **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
 | **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
