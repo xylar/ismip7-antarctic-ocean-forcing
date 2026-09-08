@@ -221,7 +221,7 @@ guess for each. Each row names what we assume and what it costs if the answer di
 
 | # | Assumption | If wrong |
 |---|---|---|
-| **Q1** | `MALI-Dev/E3SM` @ `develop` is authoritative. Work on branch `xylar/mali/ismip7-quadratic-melt`, worktree `MALI-Dev-ismip7-quadratic-melt` | Rebase onto the right branch |
+| **Q1** | `MALI-Dev/E3SM` @ `develop` is authoritative. Work on branch `mali/add-burgard-melt-param` | Rebase onto the right branch |
 | **Q2** | Calibrate on `ais_4to20km.20250625.nc`, the newest vintage | Re-run phases 3–6; all vintages are geometrically identical (findings F3), so the risk is near zero |
 | **Q3** | **Implement it.** Add the Burgard et al. (2022) *local* quadratic (Eq. 1) with a constant Antarctic-mean slope as a new `config_basal_mass_bal_float` option; calibrate `K` and also report the ISMIP6-form `gamma0` | Wasted MALI development, but the calibration pipeline is unchanged — the toolbox is parameter-agnostic, so we fall back to calibrating `gamma0` |
 | **Q7** | `config_ocean_data_extrapolation = .false.` — the ISMIP7 TF is already extrapolated into cavities on the 8 km grid | Re-run phase 4 with extrapolation on; cheap |
@@ -269,9 +269,9 @@ Scope for the first pass:
 each cheap to revise. Repositories are already set up:
 
 ```
-add-mali-melt-calibration/            this repo, branch add-mali-melt-calibration
-MALI-Dev-ismip7-quadratic-melt/       E3SM, branch xylar/mali/ismip7-quadratic-melt
-~/mpas_work/MPAS-Tools/add-ismip7-mali-masks   MPAS-Tools, branch add-ismip7-mali-masks
+add-mali-melt-calibration/                    ismip7-antarctic-ocean-forcing
+mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
+~/mpas_work/MPAS-Tools/add-ismip7-mali-masks  MPAS-Tools
 ```
 
 | Phase | Work | Blocked by | Output |
@@ -281,7 +281,7 @@ MALI-Dev-ismip7-quadratic-melt/       E3SM, branch xylar/mali/ismip7-quadratic-m
 | **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; end-to-end replication of the published quadratic numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) as a regression test | — | `terms.py` + tests |
 | **3. Mesh preparation** | `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools reusing `grid_and_mapping.py`; assemble the mesh file from `ais_4to20km.20250625.nc`, asserting the F2 basin mapping | — | MPAS-Tools PR + `mali-melt-calib mesh` |
 | **4. Forcing remap** | 8 km → MALI-mesh remap of TF **and `so`** for 11 (then 26) ocean states | — | `mali-melt-calib forcing` |
-| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `xylar/mali/ismip7-quadratic-melt`; build without Albany | — | MALI branch |
+| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany | — | MALI branch |
 | **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
 | **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
 | **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
