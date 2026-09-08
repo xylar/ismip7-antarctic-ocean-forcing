@@ -4,7 +4,7 @@ This project requires a consistent setup for everyone, including compiled Fortra
 
 ## Requirements
 
-- Python >= 3.10
+- Python >= 3.11
 - A conda installation (we recommend Miniforge)
 - The conda-forge channel with strict priority
 
