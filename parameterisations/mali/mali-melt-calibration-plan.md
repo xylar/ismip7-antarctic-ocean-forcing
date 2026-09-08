@@ -287,6 +287,14 @@ Scope for the first pass:
   `latCell`. A latitude-varying `f` would shift `K` away from the published value; raised as
   feedback A7.
 
+**A local slope was tried in MALI before and rejected.** `MALI-Dev/E3SM` PR #48 added a
+per-cell `shelfBaseSlope` field to the ISMIP6 quadratic and was closed unmerged: it melted
+holes in shelves as TF rose, through a feedback between basal slope and melt rate. Our
+constant scalar slope cannot reproduce that — it is mathematically a rescaling of `K` — so
+the finding supports the scoping above rather than contradicting it. See findings §1.8. It
+does mean the locally-varying slope variant of Eq. (1) should not be added without
+revisiting that PR.
+
 **Algorithm from the protocol, constants from MALI.** The formula is protocol Eq. (1), but
 `cp_seawater`, `latent_heat_ice`, `gravity` and the ice and ocean densities are MALI's own,
 from `li_constants` and the namelist — not the reference implementation's. They differ

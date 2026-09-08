@@ -169,6 +169,50 @@ area-weighted, `nCells`-based equivalents. The toolbox README already notes "onl
 grids are supported at the moment". 1.3 gives a working reference implementation of the
 area-weighted aggregation to follow.
 
+### 1.8 Prior art: a slope-dependent melt option was tried in MALI and rejected
+
+`MALI-Dev/E3SM` PR #48, *"Add option to include shelf base slope in ISMIP6 melt param."*
+(opened 2022-09-12, closed 2022-11-10 without merging). Flagged by Matt Hoffman.
+
+It added `config_ismip6shelfMelt_use_slope` to the existing ISMIP6 non-local quadratic,
+multiplying the melt by a **per-cell slope field**:
+
+```
+<var name="shelfBaseSlope" type="real" dimensions="nCells Time" ...>
+call calc_shelf_base_slope(geometryPool, meshPool)      ! every melt call
+floatingBasalMassBal(iCell) = -coef * shelfBaseSlope(iCell) * (TFdraft + deltaT) * abs(...)
+```
+
+recomputed each timestep from `lowerSurface` on edges, then smoothed and capped.
+
+Matt's closing comment:
+
+> further testing revealed the slope-dependent form had undesirable properties - it has a
+> tendency to melt holes in ice shelves when TF increases and also exhibited evidence of
+> undesirable feedbacks between shelf base slope and melt rate. With further theory
+> development, it may be possible to implement a variation to this, but for now, we can
+> consider this a dead end.
+
+**Why this does not apply to `config_basal_mass_bal_float = 'ismip7'` as implemented.** Both
+symptoms follow from the slope being a *geometry-derived field*: melt thins the shelf locally,
+which steepens the local basal slope, which increases melt. Our implementation takes the slope
+from a **scalar namelist option**, `config_ismip7_melt_sin_slope`, which enters `coef`
+alongside `K`; melt therefore depends only on the product `K · sinθ` and the slope cannot
+respond to geometry at all. The feedback has no pathway.
+
+This is independent support for the scoping decision in plan §5.3 to use a constant
+Antarctic-mean slope rather than the locally varying variant, which protocol Eq. (1) also
+permits. **Do not add the local-slope variant without revisiting this PR.**
+
+**What remains open.** Our change relative to ISMIP6 is a different one — non-local to local,
+i.e. `TF_local × |TF_basin-mean|` to `TF_local × |TF_local|`. The basin mean acts as a spatial
+damper, so removing it sharpens the melt pattern where TF is locally high. Whether Matt's
+concern attaches to the slope specifically or to anything that sharpens the pattern is worth
+asking him, since he has seen the failure mode. If the latter, protocol Eq. (2) — the
+*semi-local* form, which keeps a shelf- or basin-mean factor while adopting the Burgard
+constants — is an explicitly permitted fallback that would retain the damping of MALI's
+current behaviour.
+
 ---
 
 ## Part 2 — Verified results
