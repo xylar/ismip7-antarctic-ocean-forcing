@@ -297,8 +297,12 @@ def term_misfits(units, targets, parameters):
     )
 
     t3_target = targets['t3_mean'].sel(model=units['t3'].model.values)
+    # The protocol weights J4 to PIG alone (t4_weights zeroes Dotson), so the
+    # misfit must be restricted the same way; averaging Dotson in as well
+    # reverses which form appears to fit better.
+    t4_model = units['t4'].sel(region='pig')
     t4_target = targets['t4_mean'].sel(
-        region=units['t4'].region.values, year=units['t4'].year.values
+        region='pig', year=units['t4'].year.values
     )
 
     return {
@@ -314,9 +318,7 @@ def term_misfits(units, targets, parameters):
         't3': _mae(
             units['t3'] * scale, t3_target, 1.0, ['model', 'basins']
         ).values,
-        't4': _mae(
-            units['t4'] * scale, t4_target, 1.0, ['region', 'year']
-        ).values,
+        't4': _mae(t4_model * scale, t4_target, 1.0, ['year']).values,
     }
 
 

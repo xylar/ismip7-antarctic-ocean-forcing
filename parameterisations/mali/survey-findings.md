@@ -508,11 +508,15 @@ same degrees of freedom, so lower is better:
 | J1 | melt per IMBIE2 basin | **32.43** | 32.96 | local, by 1.6% |
 | J2 | melt per BFRN buttressing bin | **132.20** | 167.85 | local, by 21.2% |
 | J3 | warm-cold basin-mean melt | 2855.21 | **2611.84** | semi-local, by 8.5% |
-| J4 | PIG/Dotson melt per obs year | **10.32** | 13.22 | local, by 21.9% |
+| J4 | PIG melt per obs year | 2.06 | **0.35** | semi-local, by 83% |
 
-The local form wins the two terms it was expected to -- J2, the buttressing-weighted one that
-F10 identified as where the forms genuinely differ, and J4, the Amundsen observations -- and
-ties on J1.  It loses J3, the warm-minus-cold sensitivity.
+> **Corrected.** J4 was first reported as favouring local by 21.9%.  That averaged PIG *and*
+> Dotson with unit weights, but the protocol's `t4_weights` zero Dotson out; restricted to PIG
+> as the protocol does, the ordering reverses.  F12's optimisation was never affected --
+> `toolbox_terms` builds the weights correctly -- only this per-term table.
+
+The local form wins J2 -- the buttressing-weighted term F10 identified as where the forms
+genuinely differ -- and ties on J1.  It loses J3, the warm-minus-cold sensitivity, and J4.
 
 **This survives the masking question.** J1, J2 and J4 are integrals and so are sensitive to
 shelf extent, while J3 is an area-weighted mean and is not; since the two forms distribute
@@ -520,10 +524,10 @@ melt differently, MALI's extent bias is not purely common-mode.  Repeating every
 intersection of MALI's floating cells with the observed ISMIP7 mask changes no winner and
 barely moves the margins:
 
-| term | J1 | J2 | J3 | J4 |
-|---|---|---|---|---|
-| MALI floating | local 1.6% | local 21.2% | semi-local 8.5% | local 21.9% |
-| MALI ∩ observed | local 2.5% | local 20.3% | semi-local 6.7% | local 17.5% |
+| term | J1 | J2 | J3 |
+|---|---|---|---|
+| MALI floating | local 1.6% | local 21.2% | semi-local 8.5% |
+| MALI ∩ observed | local 2.5% | local 20.3% | semi-local 6.7% |
 
 **dT_b = 0 is correct here, not a shortcut.** Protocol Sect. 4.2.1 permits the corrections to
 be calculated at either stage: *(1)* before the parameter optimisation, which "can lead to the
@@ -587,6 +591,39 @@ Figure: ``mali_melt_parameter_distribution.png`` in the workspace root.
 **Caveats.** Present-day 4-20 km geometry rather than Trevor's ~2008 initial condition; the
 11 `recommended` ocean states rather than all 26; dT_b = 0, to be calibrated downstream per
 Sect. 4.2.1 option (2).
+
+### F13. Only J2 and J3 carry a robust signal, and they disagree
+
+The F11 table compares the two forms at the *mean* targets, which says nothing about whether a
+margin is larger than the observational uncertainty.  Repeating it with the targets drawn from
+their uncertainties -- 4000 paired draws, the same draw shown to both forms, each form
+minimised over its own parameter -- gives:
+
+| term | local wins | median margin | verdict |
+|---|---:|---:|---|
+| J1 | 35.9% | −1.0% | no clear signal |
+| J2 | **96.5%** | **+19.0%** | **local** |
+| J3 | **0.0%** | **−8.0%** | **semi-local** |
+| J4 | 46.1% | −9.6% | no clear signal |
+
+So of the four terms, exactly two discriminate, and **they point in opposite directions**:
+J2, the buttressing-weighted present-day distribution, favours local; J3, the sensitivity of
+melt to ocean warming, favours semi-local.  J1 has no power for the reason above.
+
+**J4 is uninformative here for a structural reason, not a physical one.** The `recommended`
+subset uses only two observation years (PIG 2009 and 2012), so J4 is two numbers fitted with
+one free parameter -- the minimum is essentially set by whether the form reproduces the
+*ratio* between the two years, and both forms reproduce it about equally well within the
+observational uncertainty.  Running all 13 observation years would give J4 real discriminating
+power, and is cheap: 13 short runs per form.
+
+Likewise J3 currently rests on 4 of the 7 ocean models in the target file.  Adding
+`timmermann`, `naughten_ais_2` and `haid` would firm up the one term that currently favours
+semi-local.
+
+**Conclusion: the evidence does not presently justify preferring either form.** One term each,
+in opposite directions, with the two potential tie-breakers both under-powered by the choice of
+the reduced ensemble rather than by anything physical.
 
 ---
 
