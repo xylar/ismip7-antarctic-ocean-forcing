@@ -88,6 +88,12 @@ class Constants:
         in the conversion, leaving a spurious factor of 918/917.
     rho_ocean : float
         Seawater density, kg m-3.
+    seconds_per_year : float
+        Year length used to report the melt rate per year.  The melt rate
+        itself is per second and unambiguous; this only sets the units it is
+        reported in.  MALI uses a 365-day year, matching its noleap calendar,
+        while the protocol's reference implementation uses 365.2422 days -- a
+        0.066% difference, which is enough to fail an exact comparison.
     """
 
     c_o: float
@@ -98,6 +104,7 @@ class Constants:
     rho_ice: float
     rho_ice_flux: float
     rho_ocean: float
+    seconds_per_year: float
 
 
 #: constants of the protocol's reference implementation (multimelt)
@@ -110,6 +117,7 @@ MULTIMELT = Constants(
     rho_ice=917.0,
     rho_ice_flux=918.0,
     rho_ocean=1028.0,
+    seconds_per_year=SECONDS_PER_YEAR,
 )
 
 #: constants MALI compiles in, from li_constants and the default namelist
@@ -122,6 +130,8 @@ MALI = Constants(
     rho_ice=910.0,
     rho_ice_flux=910.0,
     rho_ocean=1028.0,
+    # li_constants scyr: seconds in a 365-day year
+    seconds_per_year=31536000.0,
 )
 
 
@@ -191,6 +201,7 @@ def local_quadratic_melt(
         melt_factor = MELT_FACTOR
         u = u_factor(salinity)
         rho_ice = ICE_DENSITY
+        seconds_per_year = SECONDS_PER_YEAR
     else:
         melt_factor = (
             constants.rho_ocean
@@ -204,6 +215,7 @@ def local_quadratic_melt(
             * salinity
         )
         rho_ice = constants.rho_ice_flux
+        seconds_per_year = constants.seconds_per_year
 
     melt_m_per_s = (
         k
@@ -213,7 +225,7 @@ def local_quadratic_melt(
         * abs(thermal_forcing_avg)
         * np.sin(slope)
     )
-    return melt_m_per_s * SECONDS_PER_YEAR * rho_ice
+    return melt_m_per_s * seconds_per_year * rho_ice
 
 
 def draft_slope(draft, dx, dy, x_dim='x', y_dim='y'):

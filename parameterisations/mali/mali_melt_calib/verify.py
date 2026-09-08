@@ -23,8 +23,9 @@ import xarray as xr
 
 from mali_melt_calib.quadratic import MALI, local_quadratic_melt
 
-#: seconds per year, matching MALI's li_constants scyr
-MALI_SCYR = 31536000.0
+#: seconds per year, matching MALI's li_constants scyr.  Both sides of the
+#: comparison must use the same year, or they disagree by 0.066%.
+MALI_SCYR = MALI.seconds_per_year
 
 
 def read_namelist_floats(path, keys):

@@ -172,14 +172,25 @@ parameterisations/mali/
 `terms.py` takes a cell-area array rather than assuming `reso**2`, so the same functions serve
 structured grids and unstructured meshes and can be offered upstream.
 
-### 3.5 Possible direction change: porting the MALI-specific parts to Compass
+### 3.5 Decided: the target is a new Compass test group
 
-Noted 2026-09-08, **nothing to do now.** The rest of the MALI ISMIP7 work — `ismip7_forcing`
-and `ismip7_run` — lives in Compass, so a self-contained package here is the odd one out.
-Porting the MALI-specific orchestration into Compass would be more intuitive for the other
-MALI developers, who already know where to look for it.
+**Decision (meeting, 2026-09-08).** The delivery target is a **new test group in Compass**,
+not primarily `ismip7-antarctic-ocean-forcing`. The rest of the MALI ISMIP7 work —
+`ismip7_forcing` and `ismip7_run` — already lives there, so that is where the other MALI
+developers will look for it.
 
-If that happens, the split would be roughly:
+**What that makes the code in this directory: a prototype.** It is expected to inspire a
+re-implementation in Compass rather than be ported line by line, and that re-implementation
+will likely be done by a different agent working from these documents. Two consequences for
+how the remaining work is done:
+
+* The prototype's job is now partly to **specify** the Compass version. Decisions, the
+  reasons behind them, and the traps already hit matter more than polish. `survey-findings.md`
+  and this plan are the handover.
+* Effort should go into getting end-to-end results that show the approach works, not into
+  hardening code that will be rewritten. Time is tight (see §5.0).
+
+The split will be roughly:
 
 * **moves to Compass** — the pieces that mirror what is already there: preparing the mesh
   file, remapping the calibration forcing (a variant of `ismip7_forcing/ocean_thermal`), and
@@ -188,13 +199,10 @@ If that happens, the split would be roughly:
   generalises; `quadratic.py`, the reference implementation; and the worked example and its
   documentation.
 
-That last point is why this is a possible move rather than a mistake to correct: the
-`parameterisations/mali/` example serves ice-sheet modellers who are not MALI developers and
-will not have Compass, sitting alongside the quadratic, PICO and LADDIE examples. It earns
-its place regardless of where the MALI plumbing ends up.
-
-Deferring the decision costs little — the modules are already separated along roughly that
-line, and `datasets.py` keeps the ocean-state definitions in one place either way.
+The `parameterisations/mali/` example still earns its place after the move: it serves
+ice-sheet modellers who are not MALI developers and will not have Compass, sitting alongside
+the quadratic, PICO and LADDIE examples. The mesh-agnostic terms and the reference melt
+formula belong with the toolbox they generalise, wherever the MALI plumbing ends up.
 
 ### 3.6 Feedback to the focus group
 
@@ -225,6 +233,23 @@ all already on LCRC (findings 1.4–1.6).
 
 ## 5. Decisions
 
+### 5.0 Meeting decisions, 2026-09-08
+
+1. **The delivery target is a new Compass test group**, not primarily this repository. The
+   code here is a prototype that will inspire a re-implementation, likely by a different
+   agent. See §3.5.
+2. **The initial condition will likely be Trevor's 4 km IC targeting ~2008**, because it
+   matches the era of the melt climatology better than BedMachine Antarctica v4's nominal
+   ~2015. Later ICs may be tried afterwards to see whether it matters. See §5.5.
+3. **`MALI-Dev/E3SM` @ `develop` is the branch to work from**, plus the Burgard
+   implementation.
+4. **Skepticism about the Burgard parameterization remains**, but it is worth trying and
+   seeing what the results look like. **Time is tight.**
+
+The last two points together set the priority: get end-to-end calibration results that show
+whether the approach works, on the un-hardened prototype, rather than polishing code destined
+to be rewritten.
+
 ### 5.1 Settled
 
 | # | Decision |
@@ -233,7 +258,8 @@ all already on LCRC (findings 1.4–1.6).
 | **Q5** | **Basin ΔT.** Calibrate with ΔT = 0, then optionally fit ΔT_b to J1 afterwards. Matches the production parameter file (ΔT = 0 everywhere) and preserves the linearity in findings F1. |
 | **Q6** | **Dataset selection.** J3 with Mathiot_NEMO + Naughten_FESOM_ACCESS (all basins) and Jourdain-Naughten + Naughten_MITamu-MITwed (basins 9 and 14 only); J4 with PIG 2009 and 2012 only. |
 | **Q8** | **Machine.** Chrysalis — the mesh does not need moving (findings 1.4). |
-| **Q9** | **Tool location.** `parameterisations/mali/`, this directory. |
+| **Q1** | **MALI branch.** `MALI-Dev/E3SM` @ `develop`, plus the Burgard implementation on `mali/add-burgard-melt-param`. |
+| **Q9** | **Tool location.** `parameterisations/mali/` for the prototype; the delivery target is a new Compass test group (§3.5). |
 | **Q10** | **Unstructured meshes.** Contribute the MALI code upstream as another worked example, including the mesh-agnostic J1–J4 implementation. |
 | **Q12** | **Branch name.** `add-mali-melt-calibration`, matching this repository's branch style. |
 | — | **Geometry.** Calibrate on the un-relaxed mesh; see §3.1. |
@@ -245,9 +271,8 @@ guess for each. Each row names what we assume and what it costs if the answer di
 
 | # | Assumption | If wrong |
 |---|---|---|
-| **Q1** | `MALI-Dev/E3SM` @ `develop` is authoritative. Work on branch `mali/add-burgard-melt-param` | Rebase onto the right branch |
-| **Q2** | Calibrate on `ais_4to20km.20250625.nc`, the newest vintage | Re-run phases 3–6; all vintages are geometrically identical (findings F3), so the risk is near zero |
-| **Q3** | **Implement it.** Add the Burgard et al. (2022) *local* quadratic (Eq. 1) with a constant Antarctic-mean slope as a new `config_basal_mass_bal_float` option; calibrate `K` and also report the ISMIP6-form `gamma0` | Wasted MALI development, but the calibration pipeline is unchanged — the toolbox is parameter-agnostic, so we fall back to calibrating `gamma0` |
+| **Q2** | **Superseded by the meeting:** use **Trevor's 4 km IC targeting ~2008**, which matches the melt-climatology era better than BedMachine v4's nominal ~2015. Not yet located on LCRC — see §5.5 | Re-run phases 3–4; the mask file and remapping weights are mesh-specific and would need regenerating |
+| **Q3** | **Agreed at the meeting to try it**, with skepticism noted. Implemented and verified (findings F6); both local and semi-local forms available | Fall back to calibrating `gamma0` in the ISMIP6 form; the pipeline is parameter-agnostic and unchanged |
 | **Q7** | `config_ocean_data_extrapolation = .false.`. **Supported by evidence:** after bilinear remap to the MALI mesh the thermal forcing is 100% finite over all 385,379 cells, so there are no gaps for MALI to fill | Re-run phase 4 with extrapolation on; cheap |
 | **Q11** | pyremap does the remapping (§5.4); the driver script goes in `MPAS-Tools/landice`, branch `add-ismip7-mali-masks` | Move the script to Compass |
 | **Q13** | Build MALI **without** Albany, since `config_velocity_solver = 'none'` | Use the existing Albany build (below) |
@@ -259,9 +284,10 @@ Verified while setting these up: Chrysalis + gnu + openmpi is an Albany-supporte
 already holds both `dev_compass_1_2_0_gnu_openmpi` and `..._gnu_openmpi_albany`. So the Q13
 fallback costs nothing if we need `FO` later.
 
-**Still to ask, in priority order:** Q3 (do the MALI developers agree?), Q11 (script name
-and home), Q7, Q2, Q13, Q1. Plus A4 and A7 to the focus group; A3 is now answered by our
-replication. All are recorded in
+**Still to ask:** the path to Trevor's ~2008 initial condition (§5.5), Q11 (script name and
+home), Q7 and Q13 — the last two now only need confirming, since the test run works with the
+assumed settings. Plus A4 and A7 to the focus group; A3 is answered by our replication. All
+are recorded in
 [`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md).
 
 ### 5.3 Q3 in detail — what we are implementing
@@ -350,6 +376,26 @@ Portability nit to raise in the PR: `build_mapping_file` decides whether to use 
 `hostname.startswith('nid')`, which is Cori/Perlmutter-specific and would not fire on
 Chrysalis.
 
+### 5.5 Locating Trevor's ~2008 initial condition
+
+The meeting settled *which* initial condition, not *where* it is. It is not on LCRC as far as
+I can find: nothing matching under `/lcrc/group/e3sm/ac.trhille/`, and `mpas.ais14to4km` in
+the inputdata tree is a 2015-era mesh from a different lineage. It is presumably at NERSC
+with the rest of Trevor's ISMIP7 work.
+
+Needed from Trevor:
+
+* the path, and whether it can be copied to LCRC or the runs should move to NERSC;
+* whether it is a **uniform 4 km** mesh or the 4-20 km mesh at its finest resolution. That
+  determines whether the mask file and remapping weights built so far can be reused, or must
+  be regenerated — they are mesh-specific.
+
+Rationale worth recording, since it is a better argument than the one I had been working
+from: the calibration targets are observational melt rates referenced to roughly the
+climatology period, so matching the ice geometry to that era removes a mismatch rather than
+introducing one. That reasoning also suggests the era of the geometry matters more than its
+vintage of publication, which is the opposite of how I had framed the choice.
+
 ---
 
 ## 6. Phased work plan
@@ -370,8 +416,8 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | **2. Terms on unstructured meshes** ✅ | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; **replication of the published quadratic numbers reproduces all three percentiles exactly** | — | `terms.py`, `quadratic.py`, `replicate.py`, 16 tests |
 | **3. Mesh preparation** ✅ | `interpolate_ismip7_masks_to_mali.py` in `MPAS-Tools/landice/mesh_tools_li`, using pyremap; basins, BFRN bins, floating mask and PIG/Dotson regions on the mesh, with a bidirectional cross-check against `regionCellMasks` | — | MPAS-Tools `f7407bc6`; `work/mesh/ais_4to20km_ismip7_masks.nc` |
 | **4. Forcing remap** ✅ | `forcing.py` remaps TF **and salinity** for the 11 recommended states (26 available) via pyremap, in compass's field names and dimension order; `datasets.py` is the shared ocean-state registry | — | `work/forcing/ocean_forcing_*.nc` |
-| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany; verify against `quadratic.py` on the same drafts | — | MALI branch |
-| **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
+| **5. MALI melt module** ✅ | Burgard local **and semi-local** forms implemented on `mali/add-burgard-melt-param`, pushed to `xylar/E3SM`; builds and links; melt verified against `quadratic.py` to 7e-16 (findings F6) | — | MALI branch, 2 commits |
+| **6. MALI ensemble** | run directories, namelists/streams, job scripts (done, one run verified); rewrite the 10 remaining forcing files with the fixed writer; 3-value linearity check; production runs | Q2: the mesh choice invalidates the masks and weights | melt fields |
 | **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
 | **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
 

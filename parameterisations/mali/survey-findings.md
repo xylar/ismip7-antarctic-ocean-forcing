@@ -335,6 +335,34 @@ tf = ds['ismip6shelfMelt_3dThermalForcing'].values
 assert np.isfinite(tf).all()
 ```
 
+### F6. MALI's melt matches the reference formula to round-off
+
+The ISMIP7 local quadratic was run in MALI on the 4-20 km mesh, forced by the present-day
+climatology, one timestep with the velocity solver off, at K = 8.5e-5:
+
+| | |
+|---|---|
+| melting cells | 109,412 |
+| MALI melt | 1.81 .. 32,153 kg m⁻² yr⁻¹ |
+| max relative difference from the reference | **7.0e-16** |
+
+The comparison evaluates :func:`mali_melt_calib.quadratic.local_quadratic_melt` on **MALI's
+own** ``TFdraft`` and ``Sdraft``, which isolates the melt expression from the vertical
+interpolation.  Reproduce with ``python -m mali_melt_calib.verify <run_dir>``.
+
+**What it does not test:** the vertical interpolation of thermal forcing and salinity to the
+ice draft.  Checking that needs MALI's ``TFdraft`` compared against a Python interpolation of
+the 3-D field, which is the natural next step.
+
+**A real inconsistency it caught.** The first comparison disagreed by 6.63e-4 — too large for
+round-off, too small for a structural error.  It is entirely the year length: MALI's ``scyr``
+is a 365-day year (31,536,000 s, matching its noleap calendar) while the protocol's reference
+implementation uses 365.2422 days (31,556,926.08 s).  The ratio is 1.000663562, against an
+observed 6.631e-4.  The melt rate in kg m⁻² s⁻¹ is unambiguous; only the conversion to a
+per-year rate differs.  ``seconds_per_year`` is now part of the constants set so each
+implementation uses its own year.  Negligible physically, but it would have sat in the melt
+fields as unexplained noise.
+
 ---
 
 ## Reference paths
