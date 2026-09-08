@@ -1,0 +1,48 @@
+[workspace]
+authors = ["Xylar Asay-Davis <xylarstorm@gmail.com>"]
+channels = ["conda-forge"]
+name = "mali-melt-calib"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+inputs = { cmd = "python -m mali_melt_calib inputs", description = "Check/stage the ISMIP7 and MALI input datasets" }
+mesh = { cmd = "python -m mali_melt_calib mesh", description = "Build the MALI-mesh file with basins, BFRN bins and masks" }
+forcing = { cmd = "python -m mali_melt_calib forcing", description = "Remap ISMIP 8 km TF and salinity onto the MALI mesh" }
+ensemble = { cmd = "python -m mali_melt_calib ensemble", description = "Generate and submit the single-timestep MALI runs" }
+collect = { cmd = "python -m mali_melt_calib collect", description = "Assemble MALI output into toolbox ensemble datasets" }
+calibrate = { cmd = "python -m mali_melt_calib calibrate", description = "Run the objective-function optimisation" }
+report = { cmd = "python -m mali_melt_calib report", description = "Plots and chosen parameter values" }
+test = { cmd = "pytest -q tests", description = "Run the unit tests (no MALI, no network)" }
+lint = { cmd = "ruff check . && ruff format --check .", description = "Lint and format check" }
+
+[dependencies]
+python = "3.13.*"
+# core numerics / IO
+numpy = ">=1.26"
+scipy = ">=1.11"
+xarray = ">=2024.1"
+netcdf4 = ">=1.6"
+h5netcdf = ">=1.3"
+dask = ">=2024.1"
+pandas = ">=2.0"
+# remapping and MPAS mesh handling
+mpas_tools = ">=2.1.0,<3.0.0"
+pyremap = ">=2.4.0,<3.0.0"
+esmf = "*"
+nco = "*"
+# plotting for the report step
+matplotlib = ">=3.8"
+cmocean = "*"
+# misc
+progressbar2 = "*"
+tqdm = "*"
+
+[feature.dev.dependencies]
+pytest = ">=8"
+pytest-cov = "*"
+ruff = "*"
+pre-commit = "*"
+
+[environments]
+default = { features = ["dev"], solve-group = "default" }
