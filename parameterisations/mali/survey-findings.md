@@ -493,6 +493,43 @@ This does not settle the choice, but it makes the skepticism concrete and quanti
 than qualitative.  Caveats: one ocean state, dT = 0 throughout, and the present-day mesh
 geometry.
 
+### F11. Calibrated on the MALI mesh, the local form fits three of the four terms better
+
+The first end-to-end evaluation of the objective function against melt that **MALI itself**
+produced: 22 single-timestep runs (11 ocean states x local and semi-local), aggregated on the
+MALI mesh, compared against the protocol's own targets.
+
+For each term, the weighted mean absolute error is minimised over the form's own free
+parameter (targets at their means, so the comparison is deterministic).  Both forms have the
+same degrees of freedom, so lower is better:
+
+| term | what it constrains | local | semi-local | winner |
+|---|---|---:|---:|---|
+| J1 | melt per IMBIE2 basin | **32.43** | 32.96 | local, by 1.6% |
+| J2 | melt per BFRN buttressing bin | **132.20** | 167.85 | local, by 21.2% |
+| J3 | warm-cold basin-mean melt | 2855.21 | **2611.84** | semi-local, by 8.5% |
+| J4 | PIG/Dotson melt per obs year | **10.32** | 13.22 | local, by 21.9% |
+
+The local form wins the two terms it was expected to -- J2, the buttressing-weighted one that
+F10 identified as where the forms genuinely differ, and J4, the Amundsen observations -- and
+ties on J1.  It loses J3, the warm-minus-cold sensitivity.
+
+**This survives the masking question.** J1, J2 and J4 are integrals and so are sensitive to
+shelf extent, while J3 is an area-weighted mean and is not; since the two forms distribute
+melt differently, MALI's extent bias is not purely common-mode.  Repeating everything on the
+intersection of MALI's floating cells with the observed ISMIP7 mask changes no winner and
+barely moves the margins:
+
+| term | J1 | J2 | J3 | J4 |
+|---|---|---|---|---|
+| MALI floating | local 1.6% | local 21.2% | semi-local 8.5% | local 21.9% |
+| MALI ∩ observed | local 2.5% | local 20.3% | semi-local 6.7% | local 17.5% |
+
+**Caveats.** The best-fit parameter differs by term -- K = 4.0e-5 (J1), 1.14e-4 (J2), 4.5e-5
+(J3), 1.08e-4 (J4) -- which is precisely why the protocol samples random term weights to
+produce a *distribution* rather than one value; the published median 8.5e-5 sits inside that
+spread.  This uses the mean targets rather than sampling them, and dT_b is zero throughout.
+
 ---
 
 ## Reference paths
