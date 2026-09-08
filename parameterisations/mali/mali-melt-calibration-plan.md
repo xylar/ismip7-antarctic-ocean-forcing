@@ -1,6 +1,6 @@
 # Plan: calibrating the MALI sub-shelf melt parameterization for ISMIP7
 
-**Branch:** `ismip7-antarctic-ocean-forcing` @ `mali-melt-calibration-notebooks`
+**Branch:** `ismip7-antarctic-ocean-forcing` @ `add-mali-melt-calibration`
 **Status:** draft for review — several decisions still need input from Matt Hoffman /
 Trevor Hillebrand / the AIS Ocean Focus Group (see §5).
 **Date:** 2026-09-08
@@ -309,11 +309,92 @@ parameterisations/mali/
 input (area array supplied explicitly rather than assumed), so it can be offered upstream to
 replace the `cvt_m = reso**2` assumption.
 
+### 4.5 Feedback to the AIS Ocean Forcing focus group
+
+Being the first unstructured-mesh model through this protocol, we will keep hitting points
+where the manuscript or the toolbox is ambiguous, inconsistent, or silent. These are worth
+capturing as they arise rather than reconstructing later, and they are useful to the focus
+group in two different ways. Both live in
+[`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md), started alongside
+this plan:
+
+* **Part A — manuscript.** Points of confusion in the ISMIP7 AIS ice–ocean protocol paper:
+  ambiguities, internal inconsistencies, and places where guidance is missing for an ISM
+  whose grid or initialisation differs from the 8 km structured assumption. Collected as a
+  standalone markdown document to pass back to Ronja later. It is *feedback*, not a change
+  request — some items will turn out to be our misreading, and that is itself useful signal
+  about where the text could be clearer.
+* **Part B — repository.** Points of confusion in `parameterisations/` — the toolbox, its
+  README, and the worked examples — where the fix is a concrete change. These are proposed
+  as part of our PR adding the MALI example, so each item should say what the change would
+  be, not just what confused us.
+
+Every entry should record what we checked and what we concluded, so the focus group can see
+whether it is a real problem or a documentation gap. Where we found a genuine
+manuscript/code discrepancy, both sides are cited.
+
+Both parts are seeded with what the initial survey already turned up (five manuscript items,
+five repository items), including one confirmed manuscript/code discrepancy in how the J3/J4
+inclusion pre-factors are sampled.
+
 ---
 
-## 5. Open questions
+## 5. Decisions
 
-### For Matt Hoffman / Trevor Hillebrand (MALI + Compass)
+### 5.0 Resolved (2026-09-08)
+
+**Q5 — Basin ΔT: confirmed.** Calibrate `gamma0` (or `K`) with ΔT = 0, then optionally fit
+ΔT_b to J1 afterwards. This is the expected ISMIP7 workflow for MALI, is consistent with the
+production `ais_4to20km_tf_params.20250724.nc` (ΔT = 0 everywhere), and preserves the exact
+linearity in §2.
+
+**Q6 — Dataset selection: confirmed.** J3 with Mathiot_NEMO + Naughten_FESOM_ACCESS (all
+basins) and Jourdain-Naughten + Naughten_MITamu-MITwed (basins 9 and 14 only); J4 with PIG
+2009 and 2012 only.
+
+**Q9 — Tool location: confirmed** `parameterisations/mali/` — this directory.
+
+**Q12 — Branch name: resolved.** Development moved to `add-mali-melt-calibration`, matching
+this repository's branch-naming style (`fix-date-line`, `update-deps`, `replace-fortran`) and
+the convention that each worktree directory is named for its branch. The earlier
+`mali-melt-calibration-notebooks` branch remains at the initial plan commit and is no longer
+used.
+
+**Q10 — Unstructured meshes: confirmed.** The MALI code will be contributed upstream as
+another worked example alongside the quadratic, PICO and LADDIE ones, including the
+area-weighted, mesh-agnostic J1–J4 implementation.
+
+**Q4 — Basin index mapping: resolved by inspection; still needs a provenance-carrying tool.**
+Verified directly against the data:
+
+* ISMIP7 `basin_numbers_ismip8km_v2.nc` is **0-based, 0…15**, covering every grid cell (no
+  "outside" value). Confirmed geographically: PIG and Dotson both fall in basin **9**
+  (Eastern Amundsen) and basin **14** is Ronne-Filchner, matching the protocol's usage.
+* MALI `ismip6shelfMelt_basin` is **1-based, 1…16** (plus a single stray cell labelled 0),
+  equal to `regionCellMasks` column index + 1.
+* Cross-tabulating the two over the 296,538 ice cells of `ais_4to20km.20250625.nc`:
+  **MALI = ISMIP7 + 1 for 100.0% of ice cells**, with per-basin purity ≥ 98.8% for 15 of 16
+  basins. The exception is MALI 14 / ISMIP7 13 (Antarctic Peninsula, `Ipp-J`) at 85.2%,
+  where the ISMIP6-2022 and IMBIE2-v3 boundaries genuinely differ.
+
+  So MALI basin 10 = ISMIP7 basin 9 (Eastern Amundsen) and MALI basin 15 = ISMIP7 basin 14
+  (Ronne-Filchner). **Using MALI's index where an ISMIP7 basin number is expected is off by
+  one** — precisely the silent-failure mode flagged in §8.
+
+**Decision:** derive the basin field on the MALI mesh by remapping the ISMIP7 mask, so the
+numbering is correct by construction, and keep the cross-tabulation above as a regression
+test. Per Xylar, that remapping tool belongs in **MPAS-Tools or Compass**, not in this
+package, so that the generated basin file carries proper provenance; this package will call
+it. Which of the two, and its interface, is a new question for the MALI/Compass developers
+(Q11).
+
+**Q8 — Machine: effectively settled.** The mesh does not need moving (§3.2), so the
+calibration runs on Chrysalis. Remaining sub-question folded into Q11 below: since the
+calibration runs set `config_velocity_solver = 'none'`, they should not need Albany at all —
+only `'L1L2'`, `'FO'` and `'Stokes'` require external dycores — so a plain MALI build should
+suffice. To be confirmed at build time.
+
+### 5.1 Still open — for Matt Hoffman / Trevor Hillebrand (MALI + Compass)
 
 **Q1 — Which MALI branch is authoritative for ISMIP7?** `MALI-Dev/E3SM` @ `develop` has the ISMIP6
 quadratic and recent ISMIP7-adjacent merges (`ismip-flux-time-avg`, fracture work). Is there a
@@ -331,55 +412,51 @@ relaxed file? Is a BedMachine v3 / Bedmap3-based successor mesh in progress?
 recommends it; MALI currently has only the ISMIP6 form. Options:
   (a) calibrate `gamma0` in the existing ISMIP6 non-local form (no code change; the toolbox is
       parameter-agnostic, so this is fully defensible, just not the recommended formulation);
-  (b) add a `'ismip7_quadratic'` option to `config_basal_mass_bal_float` implementing Eqs.
-      (1)/(2) with parameter `K`, local vs. semi-local, constant vs. local slope;
+  (b) add an option to `config_basal_mass_bal_float` implementing Eqs. (1)/(2) with
+      parameter `K`, local vs. semi-local, constant vs. local slope;
   (c) (b) but calibrate `K` and *also* report the ISMIP6-form `gamma0` for comparison.
-Who would write (b), and on what timeline? This decision gates the ensemble design.
 
-**Q4 — Basin index mapping.** `ais_4to20km_region_mask.20230105.nc` carries the 16 ISMIP6
-basins (`ISMIP6 Basin A-Ap` … `K-A`), and `ais_4to20km_tf_params.20250724.nc` has
-`ismip6shelfMelt_basin` spanning 0…16. The ISMIP7 terms are indexed by IMBIE2 basin number —
-J3/J4 weighting keys explicitly on basin 9 (Eastern Amundsen) and 14 (Ronne-Filchner) — so
-**the index mapping matters and must not be guessed**. Proposal: rather than trusting either
-ordering, remap ISMIP7's `basin_numbers_ismip8km_v2.nc` onto the MALI mesh directly
-(nearest-neighbour), so numbering is consistent by construction; then cross-check against
-`regionCellMasks` and `ismip6shelfMelt_basin` and report any disagreement. Does that match how
-the production runs define basins?
+Xylar's leaning is that the development should be part of this plan — i.e. (b) or (c) — but
+this is **not yet decided**; he is checking with colleagues. This decision gates the ensemble
+design, so it is the highest-priority answer needed.
+
+If it does go ahead, the follow-on questions are:
+  * Who writes the MALI code — us on a branch, or Matt/Trevor?
+  * Which variants to support: local (Eq. 1) vs. semi-local (Eq. 2); constant Antarctic-mean
+    slope vs. local slope updated each step. The protocol accepts any; supporting local +
+    constant slope is the minimum, and matches the worked example in this repo.
+  * Naming: a new `config_basal_mass_bal_float = 'ismip7'` option, or a sub-option of
+    `'ismip6'`? New registry fields are needed for `K` and the slope.
+  * Salinity: Eq. (1) needs `S_loc` at the draft, so MALI needs a 3-D salinity input stream
+    alongside the existing TF one. The ISMIP7 datasets provide `*_S.nc` for every ocean state,
+    but the compass `ismip7_forcing` ocean step currently remaps only `tf`.
+  * Timeline relative to the ISMIP7 projections — is there a date by which the melt module
+    must be frozen?
+
+**Q11 — Where should the ISMIP7 basin-mask tool live, and does a plain MALI build suffice?**
+Two follow-ons from §5.0:
+  * The tool that rasterises/remaps the ISMIP7 IMBIE2 basin mask (and the BFRN bins, floating
+    mask and PIG/Dotson region mask) onto a MALI mesh should live in **MPAS-Tools or
+    Compass** for provenance. Which, and is there an existing entry point to extend —
+    `mpas_tools.landice`? a step in `compass/landice/tests/ismip7_forcing/`? The ISMIP6 basin
+    mask on this mesh was made with a bespoke `compass run custom` in 2022 (per the file's
+    history attribute), so there may be no reusable path yet.
+  * Do the calibration runs need an Albany-linked MALI build? With
+    `config_velocity_solver = 'none'` they should not, which would make the ensemble much
+    easier to build and run on Chrysalis. Is that right, and is there a current plain-MALI
+    build on Chrysalis to use?
 
 **Q7 — Ocean data extrapolation.** ISMIP7 TF is already extrapolated into cavities on the 8 km
 grid. After bilinear remap to the MALI mesh, do we need MALI's
 `config_ocean_data_extrapolation`, or does compass's remap already produce a
 gap-free `ismip6shelfMelt_3dThermalForcing`? What does the production ISMIP7 setup do?
 
-**Q8 — Machine.** Chrysalis (LCRC) or NERSC? Is there a current MALI build on Chrysalis? Runs
-are tiny (velocity solver off), so LCRC is fine if the mesh can be moved.
+### 5.2 Still open — for the ISMIP7 AIS Ocean Focus Group
 
-### For the ISMIP7 AIS Ocean Focus Group (Ronja Reese / Nico Jourdain)
-
-**Q5 — Basin ΔT.** The protocol recommends avoiding ΔT if possible (§4.2.1), and if used,
-prefers it computed *after* optimisation (option 2). Encouragingly, MALI's current production
-parameter file (`ais_4to20km_tf_params.20250724.nc`) already has **ΔT = 0 everywhere** with
-`gamma0 = 14500`, so the ΔT-free path appears to be what MALI is doing. Confirm: is
-calibrating `gamma0` (or `K`) with ΔT = 0, then optionally fitting ΔT_b to J1 afterwards, the
-expected ISMIP7 workflow for MALI? (Keeping ΔT = 0 during optimisation is also what preserves
-the exact linearity in §2.)
-
-**Q6 — Dataset selection for J3/J4.** Confirm the recommended set: J3 with Mathiot_NEMO +
-Naughten_FESOM_ACCESS (all basins) + Jourdain-Naughten and Naughten_MITamu-MITwed (basins 9 and
-14 only); J4 with PIG 2009 and 2012 only. This is what the quadratic example notebook does and
-what the 31 July 2026 focus-group update recommends.
-
-**Q10 — Unstructured meshes.** Would the focus group welcome an area-weighted, mesh-agnostic
-version of `calculate_term1..4` upstream? Is anyone else hitting this (other unstructured ISMs)?
-
-### For the user (Xylar)
-
-**Q9 — Where do the tools live?** `parameterisations/mali/` (alongside the other module
-examples, self-contained pixi project — where this document now sits) vs. `i7aof/mali/`
-(inside the installed package, inheriting the conda dev-spec). I lean toward
-`parameterisations/mali/` with its own `pixi.toml`, so this work does not perturb the i7aof
-conda workflow and can be developed and upstreamed independently. Also: should the branch be
-renamed from `mali-melt-calibration-notebooks` given we are not producing notebooks?
+Collected as we go in
+[`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md) rather than here —
+see §4.5. That document has two parts: manuscript points to pass back to Ronja, and toolbox
+points to fold into our upstream PR.
 
 ---
 
@@ -429,16 +506,18 @@ URLs are not directly fetchable; use
 
 ## 7. Phased work plan
 
-Phases 1–2 are unblocked and can start immediately. Phase 3 onward depends on Q2/Q3.
+Phases 1–3 are unblocked and can start immediately. Phase 5 is the one that depends on Q3.
 
 | Phase | Work | Blocked by | Output |
 |---|---|---|---|
+| **0. Feedback log** | start `protocol-and-toolbox-questions.md`; append throughout, do not defer to the end | — | manuscript notes for Ronja; toolbox items for the PR |
 | **1. Scaffold** | pixi env; package skeleton + CLI; config system; dataset registry with checksums; fetch the 8 km grid file via Globus | — | branch commit; `mali-melt-calib inputs` runs green |
 | **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; unit tests that reproduce the structured-grid answers when given a uniform-area mesh; end-to-end replication of the published quadratic-example numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) on the 8 km grid as a regression test | — | `terms.py` + tests; upstreamable PR |
-| **3. Mesh preparation** | remap IMBIE2 basins, BFRN bins, floating mask, PIG/Dotson mask onto the MALI mesh; build Config A and Config B geometry files | Q4 for the basin cross-check; Q2 only for the final IC choice — can start now on `ais_4to20km.20250625.nc` | `mali-melt-calib mesh` |
-| **4. Forcing remap** | 8 km → MALI-mesh remap of 11 (then 26) TF fields; reuse compass `process_thermal_forcing` logic standalone; SCRIP file already on LCRC | Q7 | `mali-melt-calib forcing` |
-| **5. MALI ensemble** | run-directory generation, namelists/streams, job scripts; 3-value linearity check; production runs | Q1, Q3, Q8 | `mali-melt-calib ensemble` + melt fields |
-| **6. Calibration + report** | assemble ensembles, run the 100,000-sample optimisation, produce protocol Fig. 5/7 equivalents for Config A and B; optional per-basin ΔT | Q5, Q6 | parameter values + plots + write-up |
+| **3. Mesh preparation** | remap IMBIE2 basins, BFRN bins, floating mask, PIG/Dotson mask onto the MALI mesh; build Config A and Config B geometry files. Basin mapping verified (§5.0); the remap tool itself lands in MPAS-Tools/Compass | Q11 for the tool's home; Q2 only for the final IC choice — can start now on `ais_4to20km.20250625.nc` | `mali-melt-calib mesh` + an upstream tool |
+| **4. Forcing remap** | 8 km → MALI-mesh remap of 11 (then 26) TF fields (and `so` too if Q3 → (b)/(c)); reuse compass `process_thermal_forcing` logic standalone; SCRIP file already on LCRC | Q7 | `mali-melt-calib forcing` |
+| **5. MALI ensemble** | run-directory generation, namelists/streams, job scripts; 3-value linearity check; production runs | **Q3**, Q1, Q11 | `mali-melt-calib ensemble` + melt fields |
+| **6. Calibration + report** | assemble ensembles, run the 100,000-sample optimisation, produce protocol Fig. 5/7 equivalents for Config A and B; optional per-basin ΔT (Q5: after optimisation) | — | parameter values + plots + write-up |
+| **7. Upstream PR** | contribute the MALI example, the mesh-agnostic terms, and the Part B toolbox fixes | — | PR to `ismip7-antarctic-ocean-forcing` |
 
 **Suggested immediate next step:** Phase 2. Reproducing the protocol's published quadratic
 numbers on the 8 km structured grid, through our own code path, validates the whole stage-2
@@ -456,7 +535,7 @@ Phase 3 can proceed in parallel now that the mesh is confirmed on LCRC — start
 |---|---|---|
 | MALI lacks the Burgard (2022) formulation (Q3) | Calibration is of `gamma0` in the ISMIP6 form, not the ISMIP7-recommended form | Decide early; the toolbox is parameter-agnostic, so option (a) is a valid fallback and the pipeline is unchanged |
 | Wrong IC vintage chosen (Q2) | Calibration is done against a geometry the projections do not use | Mesh + 5 IC vintages are on LCRC, so this is a re-run, not a re-acquisition; keep the IC a config option and re-run phases 3–6 (cheap) once Q2 is settled |
-| MALI/ISMIP7 basin numbering disagrees (Q4) | Silently wrong J1/J3/J4 — worst failure mode here, because it produces plausible numbers | Derive basins by remapping the ISMIP7 mask, and assert agreement with `regionCellMasks` before proceeding |
+| MALI/ISMIP7 basin numbering disagrees | Silently wrong J1/J3/J4 — worst failure mode here, because it produces plausible numbers | **Confirmed real:** MALI is 1-based, ISMIP7 0-based, so MALI basin 10 = ISMIP7 basin 9 (§5.0). Derive basins by remapping the ISMIP7 mask and keep the cross-tabulation as a regression test |
 | Ice-shelf area mismatch biases J1/J4 | Systematically shifted parameter distribution | Config B (present-day Bedmap3 geometry) quantifies it; report both |
 | TF gaps after remap to the MALI mesh | Spurious zero/invalid melt near grounding lines | Compare MALI-mesh `TFdraft` against 8 km TF at draft; check `config_invalid_value_TF` handling; use MALI's extrapolation if needed |
 | Linearity assumption wrong | Ensemble under-sampled | Explicit 3-value numerical check before relying on it |
@@ -505,7 +584,7 @@ Work area            /lcrc/group/e3sm/ac.xylar/ismip7/MALI-melt-calibration/
                        ISMIP7_AIS_ice_ocean_protocol.pdf
                        reference-docs/                   (cheat sheet, Globus manual)
                        MALI-Dev/                         (E3SM clone, develop)
-                       mali-melt-calibration-notebooks/  (this repo, worktree)
+                       add-mali-melt-calibration/        (this repo, worktree)
 ```
 
 Globus endpoint: `ccc9bbd2-4091-4e35-addd-eeb639cf5332` (`GHub_upload`), tree root `/ISMIP7/`.

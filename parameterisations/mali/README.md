@@ -13,7 +13,11 @@ rather than with a standalone parameterisation on the ISMIP 8 km grid.
 
 * [`mali-melt-calibration-plan.md`](mali-melt-calibration-plan.md) — the working plan: what
   the calibration involves, the survey of existing MALI/Compass/ISMIP7 pieces we can reuse,
-  the open questions, and the phased schedule. **Start here.**
+  the decisions taken and still open, and the phased schedule. **Start here.**
+* [`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md) — running log of
+  points where the protocol manuscript or this repository's toolbox was ambiguous or
+  inconsistent, split into manuscript feedback for the focus group and concrete repository
+  changes to propose.
 
 Tools will be added here as they are written; the proposed layout is in §4.4 of the plan.
 
