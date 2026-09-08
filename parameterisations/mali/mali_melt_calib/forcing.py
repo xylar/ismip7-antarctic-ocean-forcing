@@ -255,10 +255,36 @@ def _to_mali_form(ds_remapped, z, state, out_file, filled=0.0):
             str(b) for b in state.basins
         )
 
+    # MPAS cannot read a file that carries a variable named after one of its
+    # dimensions, and pyremap leaves several auxiliary coordinates behind.
+    # compass's ismip7_forcing drops the same set; without this MALI builds a
+    # bad decomposition and dies trying to allocate hundreds of GB.
+    aux = [
+        'lon',
+        'lat',
+        'lon_vertices',
+        'lat_vertices',
+        'lon_bnds',
+        'lat_bnds',
+        'lat_cell',
+        'lon_cell',
+        'area',
+        'z_bnds',
+        'time_bnds',
+        'x_bnds',
+        'y_bnds',
+        'crs',
+    ]
+    drop = [name for name in aux if name in ds]
+    if drop:
+        ds = ds.drop_vars(drop)
+    # the renamed vertical coordinate shares the dimension's name
+    if 'nISMIP6OceanLayers' in ds.coords:
+        ds = ds.drop_vars('nISMIP6OceanLayers')
     if 'Time' in ds.coords:
         ds = ds.drop_vars('Time')
 
-    ds.to_netcdf(out_file)
+    ds.to_netcdf(out_file, unlimited_dims=['Time'])
     return ds
 
 
