@@ -172,7 +172,31 @@ parameterisations/mali/
 `terms.py` takes a cell-area array rather than assuming `reso**2`, so the same functions serve
 structured grids and unstructured meshes and can be offered upstream.
 
-### 3.5 Feedback to the focus group
+### 3.5 Possible direction change: porting the MALI-specific parts to Compass
+
+Noted 2026-09-08, **nothing to do now.** The rest of the MALI ISMIP7 work — `ismip7_forcing`
+and `ismip7_run` — lives in Compass, so a self-contained package here is the odd one out.
+Porting the MALI-specific orchestration into Compass would be more intuitive for the other
+MALI developers, who already know where to look for it.
+
+If that happens, the split would be roughly:
+
+* **moves to Compass** — the pieces that mirror what is already there: preparing the mesh
+  file, remapping the calibration forcing (a variant of `ismip7_forcing/ocean_thermal`), and
+  generating and running the single-timestep ensemble (a variant of `ismip7_run`).
+* **stays here** — `terms.py`, which is mesh-agnostic and belongs with the toolbox it
+  generalises; `quadratic.py`, the reference implementation; and the worked example and its
+  documentation.
+
+That last point is why this is a possible move rather than a mistake to correct: the
+`parameterisations/mali/` example serves ice-sheet modellers who are not MALI developers and
+will not have Compass, sitting alongside the quadratic, PICO and LADDIE examples. It earns
+its place regardless of where the MALI plumbing ends up.
+
+Deferring the decision costs little — the modules are already separated along roughly that
+line, and `datasets.py` keeps the ocean-state definitions in one place either way.
+
+### 3.6 Feedback to the focus group
 
 We are the first unstructured-mesh model through this protocol, so we will keep hitting points
 where the manuscript or toolbox is ambiguous. These are logged as they arise in

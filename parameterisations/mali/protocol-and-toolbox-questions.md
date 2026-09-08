@@ -2,7 +2,7 @@
 
 Collected while implementing the calibration for MALI — the first unstructured-mesh,
 variable-resolution ice-sheet model to go through this protocol. See
-[`mali-melt-calibration-plan.md`](mali-melt-calibration-plan.md) §3.5 for why this document
+[`mali-melt-calibration-plan.md`](mali-melt-calibration-plan.md) §3.6 for why this document
 exists.
 
 **Part A** is feedback on the manuscript, to pass back to Ronja. **Part B** is concrete
