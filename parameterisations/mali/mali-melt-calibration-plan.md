@@ -1,8 +1,8 @@
 # Plan: calibrating the MALI sub-shelf melt parameterization for ISMIP7
 
 **Branch:** `ismip7-antarctic-ocean-forcing` @ `add-mali-melt-calibration`
-**Status:** draft for review. Nothing blocks starting (see §6); the open questions in §5.2
-matter for later phases.
+**Status:** active. All phases are unblocked — the questions that remain are being carried
+as working assumptions (§5.2) so that coding and testing can proceed through phase 5.
 **Date:** 2026-09-08
 
 **Companion documents**
@@ -127,12 +127,12 @@ Steps 5–7 are minutes of CPU; step 4 is small; step 3 is the only one needing 
 
 ```
 config_velocity_solver          = 'none'      ! melt does not depend on velocity
-config_basal_mass_bal_float     = 'ismip6'    ! or the new Burgard option, per Q3
+config_basal_mass_bal_float     = 'ismip6'    ! and the new Burgard option, per Q3
 config_thermal_solver           = 'none'
 config_thermal_calculate_bmb    = .false.
 config_dt                       = <one short step>
 config_run_duration             = <one step>
-config_ocean_data_extrapolation = ?           ! Q7
+config_ocean_data_extrapolation = .false.     ! Q7 assumption: TF is pre-extrapolated
 ```
 
 Streams: `input` = prepared mesh file; an initial-only TF stream with
@@ -214,68 +214,77 @@ all already on LCRC (findings 1.4–1.6).
 | **Q12** | **Branch name.** `add-mali-melt-calibration`, matching this repository's branch style. |
 | — | **Geometry.** Calibrate on the un-relaxed mesh; see §3.1. |
 
-### 5.2 Open
+### 5.2 Working assumptions — proceeding on a best guess, to be confirmed
 
-| # | Question | Blocks | For |
-|---|---|---|---|
-| **Q3** | Implement the Burgard et al. (2022) quadratic in MALI? | Phase 5 | Matt / Trevor |
-| **Q11** | Where does the ISMIP7 mask tool live in MPAS-Tools? | Phase 3 upstream | Matt / Trevor |
-| **Q7** | Is MALI's ocean extrapolation needed after remapping? | Phase 4 | Matt / Trevor |
-| **Q1** | Which MALI branch is authoritative for ISMIP7? | Phase 5 | Matt / Trevor |
-| **Q13** | Does a plain (non-Albany) MALI build suffice? | Phase 5 | Matt / Trevor |
-| **Q2** | Which initial-condition vintage? | Phase 3 re-run | Matt / Trevor |
-| **A3, A4** | Manuscript items still unresolved | — | Focus group |
+Xylar's direction (2026-09-08): rather than wait, code and test through phase 5 on our best
+guess for each. Each row names what we assume and what it costs if the answer differs.
 
-**Q3 — Burgard et al. (2022) quadratic.** ISMIP7 explicitly recommends it; MALI has only the
-ISMIP6 form (findings 1.1). Options: (a) calibrate `gamma0` in the existing form — defensible,
-no code change, but not the recommended formulation; (b) add an option implementing Eqs.
-(1)/(2) with parameter `K`; (c) (b) plus reporting the ISMIP6-form `gamma0` for comparison.
-Xylar leans towards (b) or (c) and is checking with colleagues. **This is the highest-priority
-answer** — it shapes the ensemble. If it goes ahead: who writes it; which variants (local vs.
-semi-local, constant vs. local slope); a new `config_basal_mass_bal_float` value or a
-sub-option; the 3-D **salinity** input stream Eq. (1) needs, which compass's ocean step does
-not currently remap; and any date by which the melt module must be frozen.
+| # | Assumption | If wrong |
+|---|---|---|
+| **Q1** | `MALI-Dev/E3SM` @ `develop` is authoritative. Work on branch `xylar/mali/ismip7-quadratic-melt`, worktree `MALI-Dev-ismip7-quadratic-melt` | Rebase onto the right branch |
+| **Q2** | Calibrate on `ais_4to20km.20250625.nc`, the newest vintage | Re-run phases 3–6; all vintages are geometrically identical (findings F3), so the risk is near zero |
+| **Q3** | **Implement it.** Add the Burgard et al. (2022) *local* quadratic (Eq. 1) with a constant Antarctic-mean slope as a new `config_basal_mass_bal_float` option; calibrate `K` and also report the ISMIP6-form `gamma0` | Wasted MALI development, but the calibration pipeline is unchanged — the toolbox is parameter-agnostic, so we fall back to calibrating `gamma0` |
+| **Q7** | `config_ocean_data_extrapolation = .false.` — the ISMIP7 TF is already extrapolated into cavities on the 8 km grid | Re-run phase 4 with extrapolation on; cheap |
+| **Q11** | The mask tool goes in MPAS-Tools at `landice/mesh_tools_li/interpolate_ismip7_masks_to_mali.py`, branch `add-ismip7-mali-masks` | Move the script to Compass |
+| **Q13** | Build MALI **without** Albany, since `config_velocity_solver = 'none'` | Use the existing Albany build (below) |
+| **A3** | Follow the **code**: continuous `U(0,1)` weights, not Bernoulli `{0,1}` inclusion. The published percentiles came out of the code as it is, so this is what reproduces them | Re-run the optimisation; seconds of CPU |
+| **A4** | Constant slope, computed as the area-weighted mean over floating cells **on our own mesh** — the notebook's own advice that it "should match the geometry". Report the value explicitly | Re-run with the published constant; note `K` is not comparable across slope conventions |
 
-**Q11 — MPAS-Tools mask tool.** Proposal: a new `landice/mesh_tools_li/`
-`interpolate_ismip7_masks_to_mali.py` writing the ISMIP7-numbered basin field, BFRN bins,
-floating mask and PIG/Dotson mask onto a MALI mesh, reusing `grid_and_mapping.py` with
-`build_mapping_file` generalised so the ISMIP grid can be the source. Should that helper move
-out of `output_processing_li/`, given an input-preparation tool would now call it? And should
-`tune_ismip6_melt_deltat.py` gain ISMIP7's three-product J1 target (findings 1.3), or should
-we do the ΔT fit here and leave it alone?
+Verified while setting these up: Chrysalis + gnu + openmpi is an Albany-supported combination
+(`compass/deploy/albany_supported.txt`), and `/lcrc/soft/climate/compass/chrysalis/spack/`
+already holds both `dev_compass_1_2_0_gnu_openmpi` and `..._gnu_openmpi_albany`. So the Q13
+fallback costs nothing if we need `FO` later.
 
-**Q7 — Ocean extrapolation.** ISMIP7 TF is already extrapolated into cavities on the 8 km
-grid. After remapping to the MALI mesh, is `config_ocean_data_extrapolation` needed, or is the
-remapped field already gap-free? What does the production setup do?
+**Still to ask, in priority order:** Q3 (does the focus of MALI development agree?), Q11 (is
+MPAS-Tools the right home, and should `grid_and_mapping.py` move out of
+`output_processing_li/`?), Q7, Q2, Q13, Q1. Plus A3 and A4 to the focus group — both are
+recorded in [`protocol-and-toolbox-questions.md`](protocol-and-toolbox-questions.md) with our
+guess noted.
 
-**Q1 — MALI branch.** `MALI-Dev/E3SM` @ `develop` has the ISMIP6 quadratic and recent
-ISMIP7-adjacent merges. Is there a `matthewhoffman/*` or `trhille/*` branch with ISMIP7 melt
-changes not yet on `develop`?
+### 5.3 Q3 in detail — what we are implementing
 
-**Q13 — Albany.** With `config_velocity_solver = 'none'` the runs should not need Albany.
-Confirm, and point us at a current plain-MALI build on Chrysalis if one exists.
+Protocol Eq. (1), the "quadratic local" form:
 
-**Q2 — IC vintage.** All five vintages are geometrically identical (findings F3), so this is
-about matching the projections: which vintage do they use, do they add a relaxation step, and
-is a BedMachine v3 / Bedmap3-based successor mesh in progress?
+```
+m = K sinθ (ρ_o/ρ_i) (c_o/L_i)² β_S S_loc (g / (2|f|)) |TF_loc| TF_loc
+```
 
+Scope for the first pass:
+
+* **local** (Eq. 1), not semi-local (Eq. 2) — the protocol accepts either, and local matches
+  the worked example in this repository.
+* **constant** Antarctic-mean slope, not the locally-varying one. Slope enters as a scalar so
+  the linearity in findings F1 is preserved.
+* a new value of `config_basal_mass_bal_float` rather than a sub-option of `'ismip6'`, so the
+  existing ISMIP6 path is untouched and both can be run for comparison.
+* new registry fields for `K` and the constant slope; `S_loc` needs a **3-D salinity input
+  stream** alongside the existing TF one, which is the largest piece of new plumbing —
+  compass's ocean step currently remaps only `tf`.
+* `f` from `latCell`; no new input needed.
 ---
 
 ## 6. Phased work plan
 
-**Nothing blocks starting.** Phases 0–2 need no answers; phase 3 can start on
-`ais_4to20km.20250625.nc` and switch vintage later as a config change.
+**Nothing is blocked.** The remaining questions are carried as working assumptions (§5.2),
+each cheap to revise. Repositories are already set up:
+
+```
+add-mali-melt-calibration/            this repo, branch add-mali-melt-calibration
+MALI-Dev-ismip7-quadratic-melt/       E3SM, branch xylar/mali/ismip7-quadratic-melt
+~/mpas_work/MPAS-Tools/add-ismip7-mali-masks   MPAS-Tools, branch add-ismip7-mali-masks
+```
 
 | Phase | Work | Blocked by | Output |
 |---|---|---|---|
 | **0. Feedback log** | append to `protocol-and-toolbox-questions.md` throughout; do not defer to the end | — | notes for Ronja; items for the PR |
 | **1. Scaffold** | pixi env; package skeleton + CLI; config system; dataset registry with checksums | — | `mali-melt-calib inputs` runs green |
 | **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; end-to-end replication of the published quadratic numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) as a regression test | — | `terms.py` + tests |
-| **3. Mesh preparation** | `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools reusing `grid_and_mapping.py`; assemble the mesh file from the un-relaxed vintage, asserting the F2 basin mapping | Q11 (review), Q2 (vintage only) | MPAS-Tools PR + `mali-melt-calib mesh` |
-| **4. Forcing remap** | 8 km → MALI-mesh remap of 11 (then 26) TF fields, plus `so` if Q3 → (b)/(c) | Q7 | `mali-melt-calib forcing` |
-| **5. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | **Q3**, Q1, Q13 | melt fields |
-| **6. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
-| **7. Upstream PR** | the MALI example, the mesh-agnostic terms, and the Part B toolbox fixes | — | PR to `ismip7-antarctic-ocean-forcing` |
+| **3. Mesh preparation** | `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools reusing `grid_and_mapping.py`; assemble the mesh file from `ais_4to20km.20250625.nc`, asserting the F2 basin mapping | — | MPAS-Tools PR + `mali-melt-calib mesh` |
+| **4. Forcing remap** | 8 km → MALI-mesh remap of TF **and `so`** for 11 (then 26) ocean states | — | `mali-melt-calib forcing` |
+| **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `xylar/mali/ismip7-quadratic-melt`; build without Albany | — | MALI branch |
+| **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
+| **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
+| **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
 
 **Start with phase 2.** It needs no MALI runs and no open answers, and reproducing the
 published quadratic numbers through our own code path validates the whole of stage 2 while
@@ -293,7 +302,7 @@ on Q3 adds salinity by configuration rather than by rework.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Basin numbering used inconsistently | Silently wrong J1/J3/J4 — worst failure mode here, since results still look plausible | Confirmed real (findings F2). Derive basins by remapping the ISMIP7 mask; assert the cross-tabulation in the tool |
-| Q3 answered late | Phase 5 rework, possibly phase 4 | Design phase 4 for a variable list; the toolbox is parameter-agnostic so phases 2 and 6 are unaffected either way |
+| Q3 turns out to be unwanted | The MALI melt-module work is wasted | Contained to its own branch; the calibration pipeline is unchanged, since the toolbox is parameter-agnostic and we fall back to calibrating `gamma0` |
 | Linearity assumption wrong | Ensemble under-sampled | Explicit 3-value numerical check before relying on it |
 | TF gaps after remapping | Spurious zero/invalid melt near grounding lines | Compare MALI-mesh `TFdraft` against 8 km TF at draft; check `config_invalid_value_TF`; enable MALI extrapolation if needed |
 | Ice-shelf area mismatch biases J1/J2/J4 | Systematically shifted parameter distribution | Intended by the protocol; bounded by calibrating on un-relaxed present-day geometry and reported as per-basin modelled vs. observed area |

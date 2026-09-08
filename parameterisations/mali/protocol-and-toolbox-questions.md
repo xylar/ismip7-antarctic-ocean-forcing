@@ -94,6 +94,10 @@ Which is intended? If the code is right, §4.2.3 should say "sample a weight uni
 this affects the published 5th/95th percentiles, so it is worth settling before more groups
 calibrate.
 
+**Our working assumption:** follow the code. The published percentiles were produced by the
+toolbox as it stands, so continuous `U(0,1)` is what reproduces them — and our replication of
+those numbers will confirm it either way.
+
 ### A4. Which constant slope, and measured how — open
 
 Three different values/definitions of the constant slope appear:
@@ -114,6 +118,11 @@ slope be *fixed* across models for comparability, or recomputed per model grid?
 For an unstructured mesh there is a fourth: the notebook's `shift(x=±1)` slope has no direct
 analogue, so we will use MALI's own gradient operator — which is a different numerical
 estimate again.
+
+**Our working assumption:** a constant slope, computed as the area-weighted mean over floating
+cells of our own mesh, following the notebook's own advice that it "should match the
+geometry". We will report the value we get, since `K` is not comparable across models that
+adopt different slope conventions — which is really the substance of this question.
 
 ### A5. Basin index base: text sums 1…16, data files are 0…15 — proposed
 
@@ -220,4 +229,5 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | Date | Change |
 |---|---|
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
+| 2026-09-08 | Working assumptions recorded for A3 and A4 so implementation can proceed; both still need a focus-group answer. |
 | 2026-09-08 | A1 reframed: the geometry and grid/code requirements are separable, not in conflict; the ask is a clarification plus guidance for groups without a present-day initialisation. A2 confirmed intended; the ask is a sentence explaining why. Both moved open → proposed. |
