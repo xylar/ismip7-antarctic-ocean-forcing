@@ -184,23 +184,32 @@ the reference implementation, and a reader checking the code against the paper w
 it. Suggestion: note in §4.2.2 that the implementation uses the mean, and that the
 normalisation makes this equivalent.
 
-### A7. The Coriolis parameter is a constant in the reference implementation — open
+### A7. The Coriolis parameter is a constant in the reference implementation — minor
 
-Protocol Eq. (1) contains `g / (2|f|)` with `f` the Coriolis parameter, which varies with
-latitude by roughly a factor of two across the Antarctic ice shelves (about -1.0e-4 s^-1 at
-44°S-equivalent shelf latitudes to -1.45e-4 s^-1 near the pole).
+Protocol Eq. (1) contains `g / (2|f|)` with `f` the Coriolis parameter, but
+`multimelt.constants` defines a single `f_coriolis = 1.4e-4` and the worked example uses it
+everywhere. The manuscript does not say whether a constant or a latitude-varying `f` is
+intended.
 
-`multimelt.constants` instead defines a single `f_coriolis = 1.4e-4`, and the worked example
-uses it everywhere. The manuscript does not say which is intended.
+Quantifying it before making anything of it: `f = 2Ω sin(φ)` gives
 
-This matters for us specifically: MALI has `latCell` and can trivially use a latitude-varying
-`f`, but doing so would change the calibrated `K` relative to the published value, since `K`
-absorbs whatever convention is used — the same comparability issue as A4.
+| latitude | \|f\| (s⁻¹) |
+|---|---|
+| 63°S (Peninsula tip) | 1.300e-4 |
+| 74°S | 1.402e-4 |
+| 85°S (southern Ross/Ronne) | 1.453e-4 |
 
-**Our working assumption:** use the constant `f = 1.4e-4`, to stay consistent with the
-published calibration, and note it in the results.
+So `|f|` varies by about **12%** across the latitudes where ice shelves actually sit — not
+the large factor one might assume from the full pole-to-equator range — and multimelt's
+1.4e-4 corresponds to 73.7°S, near the middle of that span. Since melt goes as `1/|f|`, using
+the constant introduces at most a ~6% spatial modulation either side of the mean, and `K`
+absorbs the mean.
 
-**Suggestion:** say in §4.1.1 whether `f` is intended to be constant or latitude-varying.
+**This is therefore a documentation point, not a correctness one.** We use the constant
+`f = 1.4e-4` to stay consistent with the published calibration.
+
+**Suggestion:** state in §4.1.1 that `f` is taken as constant, and give the value, so
+implementers do not each decide independently.
 
 ---
 
@@ -282,5 +291,6 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
 | 2026-09-08 | A3 settled by replication: continuous U(0,1) reproduces all three published percentiles exactly, so the manuscript text is what needs updating. |
 | 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |
+| 2026-09-08 | A7 corrected: |f| varies ~12% across ice-shelf latitudes (1.300e-4 at 63S to 1.453e-4 at 85S), not a factor of two, and multimelt's 1.4e-4 sits at 73.7S. Downgraded from open to minor. |
 | 2026-09-08 | Working assumptions recorded for A3 and A4 so implementation can proceed; both still need a focus-group answer. |
 | 2026-09-08 | A1 reframed: the geometry and grid/code requirements are separable, not in conflict; the ask is a clarification plus guidance for groups without a present-day initialisation. A2 confirmed intended; the ask is a sentence explaining why. Both moved open → proposed. |
