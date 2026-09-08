@@ -342,3 +342,147 @@ def mask_disagreement(static):
         'mali_only': km2(mali & ~obs),
         'obs_only': km2(obs & ~mali),
     }
+
+
+def toolbox_terms(units, targets, param_values):
+    """
+    Assemble the arguments ``calculate_objective_function`` expects.
+
+    The toolbox wants each modelled term indexed by ``(p1, p2, ...)``, where
+    ``p1`` is the melt parameter being selected and ``p2`` a second parameter
+    the quadratic parameterisations do not use, so it is a singleton -- the
+    same shape :mod:`mali_melt_calib.replicate` builds for the 8 km
+    replication.  Scaling by ``p1`` is exact because melt is proportional to
+    the parameter (F9).
+    """
+    p1 = xr.DataArray(param_values, dims=['p1'], coords={'p1': param_values})
+
+    def scaled(unit):
+        out = (unit * p1).expand_dims({'p2': np.ones(1)})
+        return out.transpose('p1', 'p2', ...)
+
+    t1_model = scaled(units['t1'])
+    t2_model = scaled(units['t2'])
+    t3_model = scaled(units['t3'])
+
+    t4_model = scaled(units['t4'])
+    t4_model = t4_model.where(targets['t4_mean'].notnull())
+    t4_model = t4_model.reindex_like(targets['t4_mean'])
+
+    t1_weights = xr.DataArray(
+        np.ones(t1_model.sizes['basins']),
+        dims=['basins'],
+        coords={'basins': t1_model.basins.values},
+    )
+    t3_weights = xr.DataArray(
+        np.ones((t3_model.sizes['model'], t3_model.sizes['basins'])),
+        dims=['model', 'basins'],
+        coords={
+            'model': t3_model.model.values,
+            'basins': t3_model.basins.values,
+        },
+    )
+    t4_weights = xr.DataArray(
+        np.ones(
+            (
+                targets['t4_mean'].sizes['region'],
+                targets['t4_mean'].sizes['year'],
+            )
+        ),
+        dims=['region', 'year'],
+        coords={
+            'region': targets['t4_mean'].region.values,
+            'year': targets['t4_mean'].year.values,
+        },
+    )
+    # only PIG, and only the years the ensemble actually ran
+    t4_weights = t4_weights.where(t4_weights.region == 'pig', other=0)
+    t4_weights = t4_weights.where(
+        t4_weights.year.isin(list(units['t4'].year.values)), other=0
+    )
+
+    return dict(
+        t1_model=t1_model,
+        t1_obs_mean=targets['t1_mean'],
+        t1_obs_sigma=targets['t1_sigma'],
+        t1_weights=t1_weights,
+        t2_model=t2_model,
+        t2_obs_mean=targets['t2_mean'],
+        t2_obs_sigma=targets['t2_sigma'],
+        t2_weights=targets['t2_weights'],
+        t3_model=t3_model,
+        t3_obs_mean=targets['t3_mean'].sel(model=t3_model.model.values),
+        t3_obs_sigma=targets['t3_sigma'].sel(model=t3_model.model.values),
+        t3_weights=t3_weights,
+        t4_model=t4_model,
+        t4_obs_mean=targets['t4_mean'],
+        t4_obs_sigma=targets['t4_sigma'],
+        t4_weights=t4_weights,
+    )
+
+
+def run_optimisation(
+    terms, param_values, resolution=8000.0, sample_size=100000, seed=None
+):
+    """
+    Sample the objective function and return the parameter distribution.
+
+    Parameters
+    ----------
+    terms : dict
+        From :func:`toolbox_terms`.
+    param_values : numpy.ndarray
+        The ``p1`` grid the terms were built on.
+    resolution : float, optional
+        Passed through to the toolbox; it does not use it for these terms,
+        which arrive already aggregated.
+    sample_size : int, optional
+        Number of random draws of the term weights and the targets.
+    seed : int, optional
+        Seed for reproducibility.
+
+    Returns
+    -------
+    dict
+        ``p5``, ``median``, ``p95``, ``mode`` and the raw ``min_p1``.
+    """
+    from mali_melt_calib.replicate import load_upstream_toolbox
+
+    toolbox = load_upstream_toolbox()
+    if seed is not None:
+        np.random.seed(seed)
+
+    min_p1, _ = toolbox.calculate_objective_function(
+        sample_size,
+        resolution,
+        terms['t1_model'],
+        terms['t1_obs_mean'],
+        terms['t1_obs_sigma'],
+        terms['t1_weights'],
+        terms['t2_model'],
+        terms['t2_obs_mean'],
+        terms['t2_obs_sigma'],
+        terms['t2_weights'],
+        terms['t3_model'],
+        terms['t3_obs_mean'],
+        terms['t3_obs_sigma'],
+        terms['t3_weights'],
+        terms['t4_model'],
+        terms['t4_obs_mean'],
+        terms['t4_obs_sigma'],
+        terms['t4_weights'],
+    )
+    min_p1 = np.asarray(min_p1, dtype=float)
+
+    values = np.asarray(param_values, dtype=float)
+    step = np.diff(values).min()
+    edges = np.append(values[0] - 0.5 * step, values + 1.0e-7 * step)
+    counts, _ = np.histogram(min_p1, bins=edges)
+
+    return {
+        'min_p1': min_p1,
+        'p5': float(np.percentile(min_p1, 5)),
+        'median': float(np.median(min_p1)),
+        'p95': float(np.percentile(min_p1, 95)),
+        'mode': float(values[int(np.argmax(counts))]),
+    }

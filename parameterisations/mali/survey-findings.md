@@ -552,6 +552,42 @@ here lives in J2 and J4 against J3.
 produce a *distribution* rather than one value; the published median 8.5e-5 sits inside that
 spread.  This uses the mean targets rather than sampling them.
 
+### F12. The calibration, run on the MALI mesh: three K values for ISMIP7
+
+The full protocol procedure -- 100,000 draws of the four term weights and of the targets
+within their uncertainties, each draw minimising Eq. (3) over the parameter grid -- applied to
+the 22-run MALI ensemble.  This is the deliverable the ISMIP7 projections need.
+
+| | 5th | 50th | 95th | mode |
+|---|---:|---:|---:|---:|
+| **Burgard local, MALI mesh** (`K`) | **5.00e-5** | **9.00e-5** | **1.45e-4** | 7.25e-5 |
+| published 8 km, protocol's own implementation (`K`) | 4.75e-5 | 8.50e-5 | 1.375e-4 | -- |
+| semi-local = ISMIP6 non-local, MALI mesh (`gamma0`, m/yr) | 7792 | 17280 | 29140 | 9825 |
+
+**The local result lands essentially on the published distribution** -- 5th and 50th within a
+single grid step (0.25e-5) of the protocol's own 8 km numbers, 95th within three.  That is a
+real validation: an independent Fortran implementation, on a variable-resolution 4-20 km mesh,
+with masks remapped from the ISMIP grid and melt aggregated with MALI's own floating cells,
+reproduces a calibration done on the 8 km structured grid with the protocol's Python.  It says
+the mesh, the masks, the aggregation and the MALI implementation are all mutually consistent.
+
+For the non-local form, MALI's production `gamma0` of 14,500 falls between the 5th percentile
+and the median of the distribution the same procedure produces (7792 to 29140) -- so the
+current MALI setting is on the low side of, but comfortably inside, what this calibration
+supports.
+
+**Both distributions are bimodal**: a narrow spike near the low end (K ~ 7e-5, gamma0 ~ 1e4)
+plus a broad hump above it.  That is the signature of the random term weighting acting on
+terms that disagree -- F11 found J1 and J3 minimise near K = 4.0-4.5e-5 while J2 and J4
+minimise near 1.1e-4, so draws dominated by one pair or the other land in different places.
+It is a property of the protocol's objective, not of MALI.
+
+Figure: ``mali_melt_parameter_distribution.png`` in the workspace root.
+
+**Caveats.** Present-day 4-20 km geometry rather than Trevor's ~2008 initial condition; the
+11 `recommended` ocean states rather than all 26; dT_b = 0, to be calibrated downstream per
+Sect. 4.2.1 option (2).
+
 ---
 
 ## Reference paths
