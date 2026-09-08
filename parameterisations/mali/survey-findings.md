@@ -525,10 +525,24 @@ barely moves the margins:
 | MALI floating | local 1.6% | local 21.2% | semi-local 8.5% | local 21.9% |
 | MALI ∩ observed | local 2.5% | local 20.3% | semi-local 6.7% | local 17.5% |
 
+**dT_b = 0 is correct here, not a shortcut.** The protocol selects the melt parameter with
+dT_b = 0 in every basin, and calibrates dT_b only *afterwards*, as a separate downstream step.
+The toolbox is built that way: `optimise_deltaT`, `select_optimal_deltaT` and
+`select_subensemble_using_optimal_deltaT` are separate functions, none of them called from
+`calculate_objective_function`, and `p2` is a singleton in the published replication.  So this
+comparison should **not** be "improved" by fitting dT_b first -- doing so would depart from the
+protocol.
+
+A consequence worth noting: **J1 does not discriminate between the forms either way.**  At
+dT_b = 0 it is a genuine constraint but comes out a near-tie (32.43 vs 32.96, 1.6%), and once
+dT_b is fitted downstream it collapses towards zero for any parameterisation, since a
+per-basin constant is exactly the freedom needed to match a per-basin melt integral.  The
+discriminating power lives in J2 and J4 against J3.
+
 **Caveats.** The best-fit parameter differs by term -- K = 4.0e-5 (J1), 1.14e-4 (J2), 4.5e-5
 (J3), 1.08e-4 (J4) -- which is precisely why the protocol samples random term weights to
 produce a *distribution* rather than one value; the published median 8.5e-5 sits inside that
-spread.  This uses the mean targets rather than sampling them, and dT_b is zero throughout.
+spread.  This uses the mean targets rather than sampling them.
 
 ---
 
