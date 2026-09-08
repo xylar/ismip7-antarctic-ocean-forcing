@@ -44,5 +44,11 @@ pytest-cov = "*"
 ruff = "*"
 pre-commit = "*"
 
+# multimelt is the protocol's own reference implementation of the quadratic
+# parameterisation.  Only the tests use it, to check that our formula agrees
+# with the one behind the published calibration.  PyPI only, not conda-forge.
+[feature.dev.pypi-dependencies]
+multimelt = "*"
+
 [environments]
 default = { features = ["dev"], solve-group = "default" }

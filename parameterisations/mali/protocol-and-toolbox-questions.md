@@ -66,7 +66,7 @@ accountable for its ice-shelf extent, while J3 is deliberately area-insensitive 
 *sensitivity* is compared independently of geometry errors. This also explains why bullet 1 of
 §4.2 (A1) matters as much as it does: geometry error enters the answer through these terms.
 
-### A3. §4.2.3 says the J3/J4 inclusion pre-factors are sampled from {0,1}; the code samples U(0,1) — open
+### A3. §4.2.3 says the J3/J4 inclusion pre-factors are sampled from {0,1}; the code samples U(0,1) — proposed
 
 **Confirmed discrepancy between the manuscript and the toolbox.**
 
@@ -94,9 +94,25 @@ Which is intended? If the code is right, §4.2.3 should say "sample a weight uni
 this affects the published 5th/95th percentiles, so it is worth settling before more groups
 calibrate.
 
-**Our working assumption:** follow the code. The published percentiles were produced by the
-toolbox as it stands, so continuous `U(0,1)` is what reproduces them — and our replication of
-those numbers will confirm it either way.
+**Settled by replication.** Running the full 8 km calibration through our own code path with
+the toolbox's continuous `U(0,1)` weighting reproduces all three published percentiles
+exactly:
+
+===========  ===========  ===========
+percentile   ours         published
+===========  ===========  ===========
+5th          4.750e-5     4.75e-5
+50th         8.500e-5     8.5e-5
+95th         1.375e-4     13.75e-5
+===========  ===========  ===========
+
+So the published numbers were produced with continuous weighting, and it is the **manuscript
+text that is out of date**, not the code.
+
+**Suggestion:** change §4.2.3 to say that a weight is drawn uniformly from [0,1] for each
+summand of J3 and J4, rather than a pre-factor from {0,1}. If Bernoulli inclusion was the
+intent, then the code and the published percentiles both need revisiting, which is worth
+knowing sooner rather than later.
 
 ### A4. Which constant slope, and measured how — open
 
@@ -119,10 +135,27 @@ For an unstructured mesh there is a fourth: the notebook's `shift(x=±1)` slope 
 analogue, so we will use MALI's own gradient operator — which is a different numerical
 estimate again.
 
-**Our working assumption:** a constant slope, computed as the area-weighted mean over floating
-cells of our own mesh, following the notebook's own advice that it "should match the
-geometry". We will report the value we get, since `K` is not comparable across models that
-adopt different slope conventions — which is really the substance of this question.
+**Partly answered by measurement.** Computing the mean over floating cells of the Bedmap3
+draft on the ISMIP 8 km grid, with multimelt's own finite-difference scheme, gives
+
+    mean angle = 0.0051117 rad,  sin(mean angle) = 0.0051117
+
+which matches §4.3.1's stated `sinθ ≈ 0.005`. So the paper's 0.005 *is* the
+geometry-derived mean, not Burgard et al.'s 2.9e-3 — those are two different quantities and
+the text reads as though they were alternatives.
+
+That also disposes of question (i): at θ ≈ 0.005 rad, `sinθ` and `θ` agree to one part in
+10^5, so averaging angles rather than sines makes no practical difference. What remains is
+(ii) which value modellers should adopt, and (iii) the resolution dependence, which is the
+part that actually bites: `K` absorbs the slope, so a model computing its own mean slope on a
+finer mesh gets a systematically different `K` and the two are not comparable.
+
+**Our working assumption:** compute the constant slope on our own mesh, per the notebook's
+advice that it "should match the geometry", and report the value alongside `K`.
+
+**Suggestion:** state explicitly whether the constant slope is meant to be fixed across
+models (making `K` comparable) or recomputed per model grid (making it not), and if the
+latter, ask modellers to report the slope they used.
 
 ### A5. Basin index base: text sums 1…16, data files are 0…15 — proposed
 
@@ -150,6 +183,24 @@ constant factor cancels. But it is a silent difference between the equations as 
 the reference implementation, and a reader checking the code against the paper will trip over
 it. Suggestion: note in §4.2.2 that the implementation uses the mean, and that the
 normalisation makes this equivalent.
+
+### A7. The Coriolis parameter is a constant in the reference implementation — open
+
+Protocol Eq. (1) contains `g / (2|f|)` with `f` the Coriolis parameter, which varies with
+latitude by roughly a factor of two across the Antarctic ice shelves (about -1.0e-4 s^-1 at
+44°S-equivalent shelf latitudes to -1.45e-4 s^-1 near the pole).
+
+`multimelt.constants` instead defines a single `f_coriolis = 1.4e-4`, and the worked example
+uses it everywhere. The manuscript does not say which is intended.
+
+This matters for us specifically: MALI has `latCell` and can trivially use a latitude-varying
+`f`, but doing so would change the calibrated `K` relative to the published value, since `K`
+absorbs whatever convention is used — the same comparability issue as A4.
+
+**Our working assumption:** use the constant `f = 1.4e-4`, to stay consistent with the
+published calibration, and note it in the results.
+
+**Suggestion:** say in §4.1.1 whether `f` is intended to be constant or latitude-varying.
 
 ---
 
@@ -229,5 +280,7 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | Date | Change |
 |---|---|
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
+| 2026-09-08 | A3 settled by replication: continuous U(0,1) reproduces all three published percentiles exactly, so the manuscript text is what needs updating. |
+| 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |
 | 2026-09-08 | Working assumptions recorded for A3 and A4 so implementation can proceed; both still need a focus-group answer. |
 | 2026-09-08 | A1 reframed: the geometry and grid/code requirements are separable, not in conflict; the ask is a clarification plus guidance for groups without a present-day initialisation. A2 confirmed intended; the ask is a sentence explaining why. Both moved open → proposed. |
