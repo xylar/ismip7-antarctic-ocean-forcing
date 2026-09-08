@@ -525,19 +525,27 @@ barely moves the margins:
 | MALI floating | local 1.6% | local 21.2% | semi-local 8.5% | local 21.9% |
 | MALI ∩ observed | local 2.5% | local 20.3% | semi-local 6.7% | local 17.5% |
 
-**dT_b = 0 is correct here, not a shortcut.** The protocol selects the melt parameter with
-dT_b = 0 in every basin, and calibrates dT_b only *afterwards*, as a separate downstream step.
-The toolbox is built that way: `optimise_deltaT`, `select_optimal_deltaT` and
-`select_subensemble_using_optimal_deltaT` are separate functions, none of them called from
-`calculate_objective_function`, and `p2` is a singleton in the published replication.  So this
-comparison should **not** be "improved" by fitting dT_b first -- doing so would depart from the
-protocol.
+**dT_b = 0 is correct here, not a shortcut.** Protocol Sect. 4.2.1 permits the corrections to
+be calculated at either stage: *(1)* before the parameter optimisation, which "can lead to the
+problem that the parameter bounds are not constrained when present-day melt rates are compared
+to observations (namely, terms J1 and J2)"; or *(2)* after it, "as in ISMIP6 ... (see quadratic
+example in Sect. 4.3.1)".  We follow **(2)**, which is what the quadratic worked example this
+repository replicates does.  The toolbox is built for it: `optimise_deltaT`,
+`select_optimal_deltaT` and `select_subensemble_using_optimal_deltaT` are separate functions,
+none called from `calculate_objective_function`, and `p2` is a singleton in the published
+replication.  So this comparison should not be "improved" by fitting dT_b first -- that is the
+other option, with the drawback the protocol names.
 
-A consequence worth noting: **J1 does not discriminate between the forms either way.**  At
-dT_b = 0 it is a genuine constraint but comes out a near-tie (32.43 vs 32.96, 1.6%), and once
-dT_b is fitted downstream it collapses towards zero for any parameterisation, since a
-per-basin constant is exactly the freedom needed to match a per-basin melt integral.  The
-discriminating power lives in J2 and J4 against J3.
+The protocol also recommends **avoiding dT_b where possible** ("only an ad-hoc correction"),
+and bounding it by ±2 °C when used, since the warmest-to-coldest spread across Antarctic ice
+shelves is only 3-4 °C.
+
+A consequence worth noting: **J1 does not discriminate between the forms.**  At dT_b = 0 it is
+a genuine constraint but comes out a near-tie (32.43 vs 32.96, 1.6%); under option (1) it
+would instead be nearly satisfied by construction, since a per-basin constant is exactly the
+freedom needed to match a per-basin melt integral -- which is the unconstrained-bounds problem
+Sect. 4.2.1 warns about, and which it says applies to J2 as well.  The discriminating power
+here lives in J2 and J4 against J3.
 
 **Caveats.** The best-fit parameter differs by term -- K = 4.0e-5 (J1), 1.14e-4 (J2), 4.5e-5
 (J3), 1.08e-4 (J4) -- which is precisely why the protocol samples random term weights to
