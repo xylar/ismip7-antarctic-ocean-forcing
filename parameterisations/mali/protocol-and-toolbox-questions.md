@@ -32,12 +32,18 @@ being in tension; they are not, and the text could make that harder to misread.
   grid"*
 
 Bullet 1 constrains the **geometry**; bullet 2 constrains the **code, grid and parameters**.
-Those are separable, so a model can and should satisfy both at once. The practical
-implication — which the text leaves implicit — is that a model whose initial state has been
-relaxed or spun up should calibrate on its **pre-relaxation, present-day** geometry, and a
-model with no present-day inversion at all (most of them; MALI is unusual here) must
-*substitute* a present-day geometry into its initial state for the calibration rather than use
-its own initial geometry.
+Those are separable, so a model can and should satisfy both at once.
+
+The practical implications, which the text leaves implicit:
+
+* A model whose initial state has been relaxed or spun up should preferably calibrate on its
+  **pre-relaxation** geometry. Not because a short relaxation moves the geometry far — the
+  differences are subtle — but because the drift is model-specific, and reducing exactly that
+  model-to-model variation is the point of asking everyone to use a common present-day
+  geometry.
+* A model with no present-day inversion at all (most of them; MALI is unusual here) has no
+  present-day geometry to fall back on, and must *substitute* one into its initial state for
+  the calibration rather than use its own initial geometry.
 
 Suggestion: say explicitly that the geometry requirement is independent of the grid/code
 requirement, and add a sentence on what groups without a present-day initialisation should do.

@@ -273,11 +273,14 @@ These are about different things. Bullet 1 constrains the **geometry**; bullet 2
 the **code, grid and parameters**. A model can satisfy both at once — present-day geometry, on
 the production grid, with the production code — and that is what we should do.
 
-For MALI the practical consequence is that **the calibration should not use the 10-year
-relaxation**, because after relaxation the geometry is no longer present-day. Conveniently, it
-does not have to: the E3SM inputdata meshes (§3.2) are pre-relaxation and already carry
-essentially observed geometry. Sampling `ais_4to20km.20250625.nc` against Bedmap3 on the 8 km
-grid over its 295,819 comparable ice cells:
+For MALI the practical consequence is that **the calibration should preferably use the
+un-relaxed geometry**. A 10-year relaxation does not move the geometry far — the differences
+are subtle — but they are model-specific, and it is exactly that model-to-model variation the
+protocol is trying to remove by asking everyone to calibrate against a common present-day
+geometry. Starting from the un-relaxed state keeps our calibration comparable with other
+groups' at no cost, since the E3SM inputdata meshes (§3.2) are pre-relaxation and already
+carry essentially observed geometry. Sampling `ais_4to20km.20250625.nc` against Bedmap3 on the
+8 km grid over its 295,819 comparable ice cells:
 
 | Field | MALI − Bedmap3 |
 |---|---|
@@ -292,9 +295,9 @@ geometry in the sense bullet 1 intends, and no geometry replacement is needed.
 
 **Decision:** one primary configuration — the un-relaxed production mesh, present-day geometry,
 production code and grid. The relaxed initial condition is worth one extra run purely as a
-*sensitivity*, to quantify how much a 10-year relaxation would have shifted the calibrated
-parameter. That number is cheap (§2) and useful to other groups, several of whom have no
-present-day inversion and must substitute a present-day geometry into their initial state.
+*sensitivity*, to measure how much the relaxation shifts the calibrated parameter. We expect
+that shift to be small; the value of the number is in being able to say so quantitatively
+rather than assuming it, and it is cheap to get (§2).
 
 Caveat that remains regardless: J1, J2 and J4 are *integrated* melt (Gt yr⁻¹), so any mismatch
 in ice-shelf area between MALI and the observations enters the calibrated parameter directly;
