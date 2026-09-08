@@ -93,7 +93,8 @@ assuming it. This turns a ~1,300-run campaign into ~15 runs.
 
 This linearity breaks if we introduce basin-wide ΔT *inside* the optimisation. The protocol
 offers two orderings (§4.2.1); **option (2) — compute ΔT after the parameter optimisation, as
-in ISMIP6 — preserves linearity** and is what I propose (see §5, Q5).
+in ISMIP6 — preserves linearity**, and is confirmed as the expected ISMIP7 workflow for MALI
+(§5.0, Q5).
 
 ---
 
@@ -257,34 +258,49 @@ ISMIP6 `regionCellMasks` (built from `geometric_features` in 2022), not from ISM
 
 ## 4. Proposed approach
 
-### 4.1 The geometry question — recommendation: do both
+### 4.1 Geometry: use the un-relaxed mesh — the two requirements are compatible
 
-The protocol pulls in two directions:
+The protocol's §4.2 bullets ask for two things that are often misread as being in tension:
 
-* §4.2 bullet 1: *"modellers are asked to use a recent present-day geometry, e.g., BedMap3 or
+* bullet 1: *"modellers are asked to use a recent present-day geometry, e.g., BedMap3 or
   BedMachine3, for the calibration rather than an ice-sheet model initial state with
   substantially different grounding line position, ice thickness, or ice shelf extent."*
-* §4.2 bullet 2: *"Ideally, the melt module is calibrated and evaluated in the same setting as
-  it is used in the core ISMIP7 ice-sheet simulations, i.e. with the same code and on the same
+* bullet 2: *"Ideally, the melt module is calibrated and evaluated in the same setting as it
+  is used in the core ISMIP7 ice-sheet simulations, i.e. with the same code and on the same
   grid."*
 
-The MALI ISMIP7 initial condition (`relaxed_10yrs_4km.nc`) is a 10-year relaxation, so it is
-*not* the present-day geometry. Because the melt runs are cheap (§2), I propose we do not
-choose:
+These are about different things. Bullet 1 constrains the **geometry**; bullet 2 constrains
+the **code, grid and parameters**. A model can satisfy both at once — present-day geometry, on
+the production grid, with the production code — and that is what we should do.
 
-* **Config A (primary): MALI ISMIP7 AIS mesh + ISMIP7 initial condition.** Same mesh, same
-  code, same masks as the projections. Satisfies bullet 2.
-* **Config B (sensitivity): same mesh, geometry replaced by Bedmap3 interpolated onto it.**
-  `thickness`, `bedTopography` (and hence `lowerSurface`, `cellMask`) taken directly from the
-  8 km Bedmap3 product already on disk, no relaxation. Satisfies bullet 1.
+For MALI the practical consequence is that **the calibration should not use the 10-year
+relaxation**, because after relaxation the geometry is no longer present-day. Conveniently, it
+does not have to: the E3SM inputdata meshes (§3.2) are pre-relaxation and already carry
+essentially observed geometry. Sampling `ais_4to20km.20250625.nc` against Bedmap3 on the 8 km
+grid over its 295,819 comparable ice cells:
 
-The difference between the two calibrated parameter distributions *is* the geometry-induced
-bias, and reporting it is far more useful than picking one and hoping. **A new mesh is almost
-certainly not needed** — we reuse the production mesh and swap the geometry fields.
+| Field | MALI − Bedmap3 |
+|---|---|
+| thickness | median −12.4 m, MAD 35.9 m, p5 −236 m, p95 +137 m |
+| bed | median −13.8 m, MAD 41.0 m |
+| total ice volume | 26.11 vs 26.44 ×10⁶ km³ (−1.2%) |
 
-Caveat to watch: J1 and J4 are *integrated* melt (Gt yr⁻¹), so a mismatch in ice-shelf area
-between MALI and observations biases them directly. J3 (basin-*mean* kg m⁻² yr⁻¹) is much less
-sensitive. Config B largely removes this; Config A will show it.
+Residuals of this size are what one expects from BedMachine (MALI's source, via compass
+`landice/tests/antarctica/mesh.py` → `add_bedmachine_thk_to_ais_gridded_data`) versus Bedmap3,
+plus 8 km sampling of a 4–20 km mesh. So the inputdata geometry *is* a recent present-day
+geometry in the sense bullet 1 intends, and no geometry replacement is needed.
+
+**Decision:** one primary configuration — the un-relaxed production mesh, present-day geometry,
+production code and grid. The relaxed initial condition is worth one extra run purely as a
+*sensitivity*, to quantify how much a 10-year relaxation would have shifted the calibrated
+parameter. That number is cheap (§2) and useful to other groups, several of whom have no
+present-day inversion and must substitute a present-day geometry into their initial state.
+
+Caveat that remains regardless: J1, J2 and J4 are *integrated* melt (Gt yr⁻¹), so any mismatch
+in ice-shelf area between MALI and the observations enters the calibrated parameter directly;
+J3 (basin-*mean* kg m⁻² yr⁻¹) is much less sensitive. This is intended by the protocol — the
+modelled shelf area is part of what is being calibrated against — but it is worth reporting
+MALI's per-basin shelf area against the observed area alongside the results.
 
 ### 4.2 Workflow
 
@@ -292,7 +308,7 @@ sensitive. Config B largely removes this; Config A will show it.
  (0) environment          pixi env for the calibration tools
  (1) inputs               link/verify local ISMIP7 data; globus-fetch the 8km grid file;
                           obtain the MALI ISMIP7 mesh + initial condition
- (2) mesh preparation     for each of Config A / B, build a MALI-mesh file carrying:
+ (2) mesh preparation     build a MALI-mesh file (un-relaxed, present-day geometry) with:
                             geometry (thickness, bedTopography, lowerSurface)
                             ismip6shelfMelt_basin   (IMBIE2, 16 basins)
                             BFRN bins               (10 bins, remapped from ISMIP 8 km)
@@ -457,9 +473,17 @@ quadratic and recent ISMIP7-adjacent merges (`ismip-flux-time-avg`, fracture wor
 (20230105 → 20250625) are already on LCRC in the E3SM inputdata tree, along with the SCRIP
 file, graph partitions, region mask, and a `tf_params` file. Compass instead points at a
 NERSC file, `AIS_4to20km_20230105/relaxation_0TGmelt_10yr/relaxed_10yrs_4km.nc` — the
-20230105 mesh after a 10-year relaxation. Which vintage is the ISMIP7 AIS initial condition,
-and is the relaxation part of it? Should I reproduce the relaxation on LCRC or fetch the
-relaxed file? Is a BedMachine v3 / Bedmap3-based successor mesh in progress?
+20230105 mesh after a 10-year relaxation.
+
+Per §4.1 the calibration wants the **un-relaxed** geometry, so the relaxed file is no longer
+needed for the primary configuration; the question is narrower now:
+
+  * Which vintage should we calibrate on? The five differ in ancillary fields (60–85
+    variables) but not in geometry — ice volume and ice-cell count are identical across all
+    five — so this is mostly about matching whatever the projections use.
+  * Do the production ISMIP7 runs start from one of these inputdata files plus a relaxation
+    step, or from something else entirely?
+  * Is a BedMachine v3 / Bedmap3-based successor mesh in progress that we should wait for?
 
 **Q3 — Do we implement the Burgard et al. (2022) quadratic in MALI?** ISMIP7 explicitly
 recommends it; MALI currently has only the ISMIP6 form. Options:
@@ -549,7 +573,7 @@ BedMachine v3 topography on the ISMIP 8 km grid.
    *if* the ISMIP7 IC is the relaxed state rather than one of the LCRC inputdata vintages.
    Blocked on Q2. The mesh itself, five IC vintages, the SCRIP file, graph partitions, region
    mask and `tf_params` are all already on LCRC (§3.2) — nothing to fetch there.
-3. *(Config B only)* nothing new — Bedmap3 on the 8 km grid is already local.
+3. *(Sensitivity run only)* nothing new — Bedmap3 and BedMachine v3 on the 8 km grid are already local.
 4. *(Only if Q3 → option b)* nothing new; the Burgard form needs salinity (`so`) at the draft,
    which is already present for every ocean state (`*_S.nc`), plus latitude for the Coriolis
    parameter and the ice-draft slope, both derivable on the MALI mesh.
@@ -583,10 +607,10 @@ Phases 1–3 are unblocked and can start immediately. Phase 5 is the one that de
 | **0. Feedback log** | start `protocol-and-toolbox-questions.md`; append throughout, do not defer to the end | — | manuscript notes for Ronja; toolbox items for the PR |
 | **1. Scaffold** | pixi env; package skeleton + CLI; config system; dataset registry with checksums; fetch the 8 km grid file via Globus | — | branch commit; `mali-melt-calib inputs` runs green |
 | **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; unit tests that reproduce the structured-grid answers when given a uniform-area mesh; end-to-end replication of the published quadratic-example numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) on the 8 km grid as a regression test | — | `terms.py` + tests; upstreamable PR |
-| **3. Mesh preparation** | new `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools, reusing `grid_and_mapping.py` (§3.6); build Config A and Config B geometry files. Basin mapping verified (§5.0) and asserted by the tool | Q11 for review of the approach; Q2 only for the final IC choice — can start now on `ais_4to20km.20250625.nc` | MPAS-Tools PR + `mali-melt-calib mesh` |
+| **3. Mesh preparation** | new `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools, reusing `grid_and_mapping.py` (§3.6); assemble the mesh file from the un-relaxed vintage. Basin mapping verified (§5.0) and asserted by the tool | Q11 for review of the approach; Q2 only for the vintage — can start now on `ais_4to20km.20250625.nc` | MPAS-Tools PR + `mali-melt-calib mesh` |
 | **4. Forcing remap** | 8 km → MALI-mesh remap of 11 (then 26) TF fields (and `so` too if Q3 → (b)/(c)); reuse compass `process_thermal_forcing` logic standalone; SCRIP file already on LCRC | Q7 | `mali-melt-calib forcing` |
 | **5. MALI ensemble** | run-directory generation, namelists/streams, job scripts; 3-value linearity check; production runs | **Q3**, Q1, Q11 | `mali-melt-calib ensemble` + melt fields |
-| **6. Calibration + report** | assemble ensembles, run the 100,000-sample optimisation, produce protocol Fig. 5/7 equivalents for Config A and B; optional per-basin ΔT (Q5: after optimisation) | — | parameter values + plots + write-up |
+| **6. Calibration + report** | assemble ensembles, run the 100,000-sample optimisation, produce protocol Fig. 5/7 equivalents; report per-basin modelled vs. observed shelf area; relaxed-IC sensitivity; optional per-basin ΔT (Q5: after optimisation) | — | parameter values + plots + write-up |
 | **7. Upstream PR** | contribute the MALI example, the mesh-agnostic terms, and the Part B toolbox fixes | — | PR to `ismip7-antarctic-ocean-forcing` |
 
 **Suggested immediate next step:** Phase 2. Reproducing the protocol's published quadratic
@@ -606,7 +630,7 @@ Phase 3 can proceed in parallel now that the mesh is confirmed on LCRC — start
 | MALI lacks the Burgard (2022) formulation (Q3) | Calibration is of `gamma0` in the ISMIP6 form, not the ISMIP7-recommended form | Decide early; the toolbox is parameter-agnostic, so option (a) is a valid fallback and the pipeline is unchanged |
 | Wrong IC vintage chosen (Q2) | Calibration is done against a geometry the projections do not use | Mesh + 5 IC vintages are on LCRC, so this is a re-run, not a re-acquisition; keep the IC a config option and re-run phases 3–6 (cheap) once Q2 is settled |
 | MALI/ISMIP7 basin numbering disagrees | Silently wrong J1/J3/J4 — worst failure mode here, because it produces plausible numbers | **Confirmed real:** MALI is 1-based, ISMIP7 0-based, so MALI basin 10 = ISMIP7 basin 9 (§5.0). Derive basins by remapping the ISMIP7 mask and keep the cross-tabulation as a regression test |
-| Ice-shelf area mismatch biases J1/J4 | Systematically shifted parameter distribution | Config B (present-day Bedmap3 geometry) quantifies it; report both |
+| Ice-shelf area mismatch biases J1/J2/J4 | Systematically shifted parameter distribution | Intended by the protocol (feedback A2), but bounded by calibrating on un-relaxed present-day geometry (§4.1) and reported as per-basin modelled vs. observed shelf area |
 | TF gaps after remap to the MALI mesh | Spurious zero/invalid melt near grounding lines | Compare MALI-mesh `TFdraft` against 8 km TF at draft; check `config_invalid_value_TF` handling; use MALI's extrapolation if needed |
 | Linearity assumption wrong | Ensemble under-sampled | Explicit 3-value numerical check before relying on it |
 | Focus-group data revisions (a `_v4` appears) | Rework | Dataset registry pins versions + checksums; a refresh is a config change, not a code change |

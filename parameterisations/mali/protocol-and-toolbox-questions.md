@@ -19,10 +19,10 @@ suggestion) · **resolved** (answered; kept for the record).
 
 ## Part A — manuscript
 
-### A1. Present-day geometry vs. "same setting as the core simulations" — open
+### A1. Present-day geometry vs. "same setting as the core simulations" — proposed
 
-§4.2 asks for two things that conflict for any ISM whose initial state is not the observed
-present-day geometry:
+*Not a contradiction — a clarification.* Our first reading treated these two §4.2 bullets as
+being in tension; they are not, and the text could make that harder to misread.
 
 * bullet 1: *"modellers are asked to use a recent present-day geometry, e.g., BedMap3 or
   BedMachine3, for the calibration rather than an ice-sheet model initial state with
@@ -31,22 +31,34 @@ present-day geometry:
   is used in the core ISMIP7 ice-sheet simulations, i.e. with the same code and on the same
   grid"*
 
-MALI's ISMIP7 initial condition is a 10-year relaxation, so it satisfies bullet 2 but not
-bullet 1. Which takes precedence when they cannot both be met? Our plan is to do both and
-report the difference (plan §4.1), but a stated preference would help modellers who cannot
-afford two calibrations.
+Bullet 1 constrains the **geometry**; bullet 2 constrains the **code, grid and parameters**.
+Those are separable, so a model can and should satisfy both at once. The practical
+implication — which the text leaves implicit — is that a model whose initial state has been
+relaxed or spun up should calibrate on its **pre-relaxation, present-day** geometry, and a
+model with no present-day inversion at all (most of them; MALI is unusual here) must
+*substitute* a present-day geometry into its initial state for the calibration rather than use
+its own initial geometry.
 
-### A2. Integrated vs. averaged targets and ice-shelf area bias — open
+Suggestion: say explicitly that the geometry requirement is independent of the grid/code
+requirement, and add a sentence on what groups without a present-day initialisation should do.
+That second point is likely to affect more participants than it does us.
+
+### A2. Integrated vs. averaged targets and ice-shelf area bias — proposed
 
 J1, J2 and J4 compare *integrated* melt (Gt yr⁻¹); J3 compares *basin-averaged* melt
 (kg m⁻² yr⁻¹). An ISM whose ice-shelf area differs from the observed area therefore carries a
 systematic bias in J1/J2/J4 that J3 does not share, and the bias enters directly into the
 calibrated parameter.
 
-Is this intended — i.e. is the modelled shelf area considered part of what is being
-calibrated? Or should modellers normalise by the ratio of modelled to observed ice-shelf area
-in each basin/bin? This interacts with A1: it is the mechanism by which the geometry choice
-propagates into the answer.
+**Confirmed intended** (Xylar, focus group): the modelled shelf area *is* part of what is
+being calibrated against, and modellers should not normalise it away. The paper could say so —
+as written, a reader hitting the J1/J2/J4-vs-J3 asymmetry has to guess whether it is
+deliberate.
+
+Suggestion: a sentence in §4.2.2 noting that the integrated terms deliberately hold the model
+accountable for its ice-shelf extent, while J3 is deliberately area-insensitive so that melt
+*sensitivity* is compared independently of geometry errors. This also explains why bullet 1 of
+§4.2 (A1) matters as much as it does: geometry error enters the answer through these terms.
 
 ### A3. §4.2.3 says the J3/J4 inclusion pre-factors are sampled from {0,1}; the code samples U(0,1) — open
 
@@ -202,3 +214,4 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | Date | Change |
 |---|---|
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
+| 2026-09-08 | A1 reframed: the geometry and grid/code requirements are separable, not in conflict; the ask is a clarification plus guidance for groups without a present-day initialisation. A2 confirmed intended; the ask is a sentence explaining why. Both moved open → proposed. |
