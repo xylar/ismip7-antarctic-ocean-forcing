@@ -200,7 +200,58 @@ script (or `globus transfer`), with checksums recorded.
 MALI's mesh is **unstructured and variable-resolution (4–20 km)**, so all four term
 calculations need area-weighted, `nCells`-based equivalents. This is a contained, testable
 piece of work and a genuinely useful upstream contribution (the toolbox README already says
-"only regular grids are supported at the moment").
+"only regular grids are supported at the moment"). §3.6 notes that MPAS-Tools already has a
+working area-weighted basin aggregation on a MALI mesh, so there is a reference
+implementation to follow rather than invent.
+
+### 3.6 MPAS-Tools already has much of the MALI-side machinery
+
+Surveyed `MPAS-Dev/MPAS-Tools` @ `master` (local clone
+`/home/ac.xylar/mpas_work/MPAS-Tools/master`, at `be1954cf`). Three pieces are directly
+relevant, and together they mean we should be *extending* MPAS-Tools rather than writing
+this from scratch:
+
+**`landice/mesh_tools_li/tune_ismip6_melt_deltat.py`** — the tool that produced the
+production parameter file. It already contains, on the MALI mesh:
+
+* `TFdraft` by interpolating 3-D TF to `lowerSurface`, and area-weighted `meanTF` per region
+* the MALI ISMIP6 quadratic in Python:
+  `melt = gamma0 * coef * (TFdraft + dT) * |meanTFcell + dT|`
+* **area-weighted basin aggregation to Gt yr⁻¹**:
+  `(melt[ind] * areaCell[ind]).sum() * rhoi / 1.0e12` — this is exactly the J1 aggregation
+  §3.5 says we need, already written for an unstructured mesh
+* a `dT` sweep per region against an observational target, writing
+  `basin_and_coeff_DeltaT_quadratic_non_local_gamma<gamma0>.nc` — the very filename the
+  compass ISMIP7 AIS config points at, with the same default `gamma0 = 14500`
+* line 345, `regionCells[regionCellMasks[:, reg] == 1] = reg + 1`, with the comment that
+  `regionCellMasks` is per-region 0/1 whereas the ISMIP6 basin field is a single integer per
+  cell. **This is the origin of the 1-based `ismip6shelfMelt_basin` field** and independently
+  confirms the off-by-one established in §5.0.
+
+  Gap: its target is Paolo et al. alone, spatially averaged over floating cells per region.
+  ISMIP7's J1 target is the *three-product* mean (Paolo/Davison/Adusumilli) with the expanded
+  uncertainty of §A8. So the ΔT step needs ISMIP7 targets swapped in.
+
+**`landice/output_processing_li/ismip7_postprocessing/grid_and_mapping.py`** — ISMIP7-aware
+remapping infrastructure:
+
+* `create_ismip7_grid_file(icesheet, res_km, output_file)` writes the ISMIP7 standard grid
+  (AIS EPSG:3031, −3040 km…+3040 km) as x/y coordinate variables. That is all a SCRIP/ESMF
+  source-grid description needs, so **we may not need to download
+  `ISMIP7_8km-60m_AIS_grid_ocean_v3.nc` at all** except to verify agreement.
+* `build_mapping_file(...)` builds SCRIP files via `mpas_tools.scrip.from_mpas.scrip_from_mpas`
+  and calls `ESMF_RegridWeightGen`. Currently wired MALI → ISMIP (post-processing direction);
+  we need ISMIP → MALI, i.e. source and destination swapped, which is a small generalisation.
+* `check_ismip7_grid_file(...)` validates extents.
+
+**`mpas_tools.landice.interpolate.interpolate_to_mpasli_grid`** — structured grid → MALI mesh
+with bilinear, barycentric or ESMF-weight methods. Useful, but it expects CISM or MPAS input
+conventions, so the ISMIP7 rasters would need adapting to it.
+
+**What genuinely does not exist yet:** nothing produces the *ISMIP7* IMBIE2 basin field, the
+BFRN bins, or the PIG/Dotson shelf mask on a MALI mesh. The existing basin field comes from
+ISMIP6 `regionCellMasks` (built from `geometric_features` in 2022), not from ISMIP7's
+`basin_numbers_ismip8km_v2.nc`. That is the piece to add — see Q11.
 
 ---
 
@@ -294,7 +345,7 @@ parameterisations/mali/
   mali_melt_calib/
     config/                        # .cfg defaults, per-config (A/B) overrides
     inputs.py                      # dataset registry, globus fetch, checksums, provenance
-    mesh.py                        # basins/BFRN/floating mask/region mask -> MALI mesh
+    mesh.py                        # thin driver over the MPAS-Tools mask tool (§3.6, Q11)
     forcing.py                     # 8km TF -> MALI mesh remap (pyremap/ESMF)
     ensemble.py                    # generate + submit the MALI runs
     collect.py                     # MALI output -> toolbox ensemble datasets
@@ -380,6 +431,8 @@ Verified directly against the data:
   So MALI basin 10 = ISMIP7 basin 9 (Eastern Amundsen) and MALI basin 15 = ISMIP7 basin 14
   (Ronne-Filchner). **Using MALI's index where an ISMIP7 basin number is expected is off by
   one** — precisely the silent-failure mode flagged in §8.
+* Corroborated in the source: `tune_ismip6_melt_deltat.py:345` builds the field as
+  `regionCells[regionCellMasks[:, reg] == 1] = reg + 1` (§3.6).
 
 **Decision:** derive the basin field on the MALI mesh by remapping the ISMIP7 mask, so the
 numbering is correct by construction, and keep the cross-tabulation above as a regression
@@ -433,18 +486,33 @@ If it does go ahead, the follow-on questions are:
   * Timeline relative to the ISMIP7 projections — is there a date by which the melt module
     must be frozen?
 
-**Q11 — Where should the ISMIP7 basin-mask tool live, and does a plain MALI build suffice?**
-Two follow-ons from §5.0:
-  * The tool that rasterises/remaps the ISMIP7 IMBIE2 basin mask (and the BFRN bins, floating
-    mask and PIG/Dotson region mask) onto a MALI mesh should live in **MPAS-Tools or
-    Compass** for provenance. Which, and is there an existing entry point to extend —
-    `mpas_tools.landice`? a step in `compass/landice/tests/ismip7_forcing/`? The ISMIP6 basin
-    mask on this mesh was made with a bespoke `compass run custom` in 2022 (per the file's
-    history attribute), so there may be no reusable path yet.
-  * Do the calibration runs need an Albany-linked MALI build? With
-    `config_velocity_solver = 'none'` they should not, which would make the ensemble much
-    easier to build and run on Chrysalis. Is that right, and is there a current plain-MALI
-    build on Chrysalis to use?
+**Q11 — Confirm the MPAS-Tools plan for the ISMIP7 mask tool.** §3.6 surveyed what already
+exists; this is now a review question rather than an open search. Proposal:
+
+  * Add a script under `landice/mesh_tools_li/`, say `interpolate_ismip7_masks_to_mali.py`,
+    that takes a MALI mesh and the ISMIP7 8 km masks and writes `ismip6shelfMelt_basin`
+    (ISMIP7 IMBIE2 numbering), the BFRN bin field, the floating mask and the PIG/Dotson
+    region mask onto the mesh — nearest-neighbour for the integer fields.
+  * Reuse `ismip7_postprocessing/grid_and_mapping.py` for the grid and weight generation,
+    generalising `build_mapping_file` so the ISMIP grid can be the *source* as well as the
+    destination. Does that belong as a shared helper, or should the landice tools grow their
+    own copy? It currently lives under `output_processing_li/`, which is the wrong home for
+    something an input-preparation tool calls.
+  * Emit both the ISMIP7-numbered field and the cross-tabulation against the existing
+    ISMIP6 `regionCellMasks`, so the off-by-one in §5.0 is checked automatically rather than
+    rediscovered.
+  * Separately: `tune_ismip6_melt_deltat.py` would need ISMIP7's three-product J1 target
+    (§A8) rather than Paolo-only to be used for the ISMIP7 ΔT step. Extend it with a target
+    option, or do the ΔT fit in this package and leave that script alone?
+
+  Is `landice/mesh_tools_li/` the right home, or would you rather this went into Compass as
+  a step alongside `ismip7_forcing`?
+
+**Q13 — Albany.** Do the calibration runs need an Albany-linked MALI build? With
+`config_velocity_solver = 'none'` they should not — only `'L1L2'`, `'FO'` and `'Stokes'`
+require external dycores — which would make the ensemble much easier to build and run.
+Xylar's expectation is that Albany is not needed; confirming with Matt and Trevor. Is there a
+current plain-MALI build on Chrysalis to use?
 
 **Q7 — Ocean data extrapolation.** ISMIP7 TF is already extrapolated into cavities on the 8 km
 grid. After bilinear remap to the MALI mesh, do we need MALI's
@@ -472,9 +540,11 @@ BedMachine v3 topography on the ISMIP 8 km grid.
 ### To acquire
 
 1. **`ISMIP7_8km-60m_AIS_grid_ocean_v3.nc`** (46 MB) — Globus,
-   `/ISMIP7/AIS/grid/ocean/ISMIP7/8km-60m/v3/`. Needed as the source-grid description for
-   ESMF weight generation. (Alternative: generate it with `i7aof.grid.ismip` — check
-   equivalence.)
+   `/ISMIP7/AIS/grid/ocean/ISMIP7/8km-60m/v3/`. *Probably not required:* ESMF weight
+   generation needs only x/y coordinates, which
+   `grid_and_mapping.create_ismip7_grid_file('AIS', 8, ...)` writes directly (§3.6), and
+   `i7aof.grid.ismip` is a third route. Worth fetching once to confirm all three agree, then
+   generating thereafter.
 2. **The relaxed MALI initial condition** — `relaxed_10yrs_4km.nc`, currently NERSC-only,
    *if* the ISMIP7 IC is the relaxed state rather than one of the LCRC inputdata vintages.
    Blocked on Q2. The mesh itself, five IC vintages, the SCRIP file, graph partitions, region
@@ -513,7 +583,7 @@ Phases 1–3 are unblocked and can start immediately. Phase 5 is the one that de
 | **0. Feedback log** | start `protocol-and-toolbox-questions.md`; append throughout, do not defer to the end | — | manuscript notes for Ronja; toolbox items for the PR |
 | **1. Scaffold** | pixi env; package skeleton + CLI; config system; dataset registry with checksums; fetch the 8 km grid file via Globus | — | branch commit; `mali-melt-calib inputs` runs green |
 | **2. Terms on unstructured meshes** | area-weighted `calculate_term1..4`; unit tests that reproduce the structured-grid answers when given a uniform-area mesh; end-to-end replication of the published quadratic-example numbers (median K = 8.5e-5, 5th = 4.75e-5, 95th = 13.75e-5) on the 8 km grid as a regression test | — | `terms.py` + tests; upstreamable PR |
-| **3. Mesh preparation** | remap IMBIE2 basins, BFRN bins, floating mask, PIG/Dotson mask onto the MALI mesh; build Config A and Config B geometry files. Basin mapping verified (§5.0); the remap tool itself lands in MPAS-Tools/Compass | Q11 for the tool's home; Q2 only for the final IC choice — can start now on `ais_4to20km.20250625.nc` | `mali-melt-calib mesh` + an upstream tool |
+| **3. Mesh preparation** | new `interpolate_ismip7_masks_to_mali.py` in MPAS-Tools, reusing `grid_and_mapping.py` (§3.6); build Config A and Config B geometry files. Basin mapping verified (§5.0) and asserted by the tool | Q11 for review of the approach; Q2 only for the final IC choice — can start now on `ais_4to20km.20250625.nc` | MPAS-Tools PR + `mali-melt-calib mesh` |
 | **4. Forcing remap** | 8 km → MALI-mesh remap of 11 (then 26) TF fields (and `so` too if Q3 → (b)/(c)); reuse compass `process_thermal_forcing` logic standalone; SCRIP file already on LCRC | Q7 | `mali-melt-calib forcing` |
 | **5. MALI ensemble** | run-directory generation, namelists/streams, job scripts; 3-value linearity check; production runs | **Q3**, Q1, Q11 | `mali-melt-calib ensemble` + melt fields |
 | **6. Calibration + report** | assemble ensembles, run the 100,000-sample optimisation, produce protocol Fig. 5/7 equivalents for Config A and B; optional per-basin ΔT (Q5: after optimisation) | — | parameter values + plots + write-up |
@@ -566,6 +636,14 @@ In `MPAS-Dev/compass` @ `main`:
 ```
 Compass forcing      compass/landice/tests/ismip7_forcing/
 Compass AIS run      compass/landice/tests/ismip7_run/ismip7_ais/
+```
+
+In `MPAS-Dev/MPAS-Tools` @ `master` (local clone `/home/ac.xylar/mpas_work/MPAS-Tools/master`):
+
+```
+deltaT tuning        landice/mesh_tools_li/tune_ismip6_melt_deltat.py
+ISMIP7 grid/mapping  landice/output_processing_li/ismip7_postprocessing/grid_and_mapping.py
+structured -> MALI   mpas_tools/landice/interpolate.py  (interpolate_to_mpasli_grid)
 ```
 
 On LCRC:
