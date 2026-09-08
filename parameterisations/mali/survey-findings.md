@@ -390,6 +390,13 @@ So providing semi-local would mean a second code path, plus a global reduction, 
 what `iceshelf_melt_ismip6` already computes. It was removed on that basis;
 `config_basal_mass_bal_float = 'ismip6'` gives that behaviour.
 
+**Removing it does not cost us the local-vs-semi-local comparison.** Because the two are
+degenerate, calibrating `gamma0` through MALI's existing `ismip6` code path *is* the
+semi-local calibration, and the two can be compared on a fair footing: `gamma0` + 16 `dT_b`
+against `K` + 16 `dT_b`, the same number of free parameters, so the minimised objective is a
+legitimate model-selection test.  F10 suggests J2 is where the discrimination will live,
+since J1 is largely absorbable by the free parameter and `dT_b`.
+
 **The local form is not degenerate.** Replacing `|<TF>|` with `|TF_loc|` changes the spatial
 pattern of melt in a way no per-basin constant can reproduce — which is both why it is worth
 having and why it carries the risk Matt raised in PR #48 (§1.8).
