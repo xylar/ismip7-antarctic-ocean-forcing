@@ -153,9 +153,18 @@ finer mesh gets a systematically different `K` and the two are not comparable.
 **Our working assumption:** compute the constant slope on our own mesh, per the notebook's
 advice that it "should match the geometry", and report the value alongside `K`.
 
+**A second, separable point: the `sin θ` notation itself is confusing when θ is constant.**
+Written as `K sin θ ...`, it reads as a geometric quantity that varies over the ice shelf. In
+the constant-slope variant it is nothing of the kind — it is a fixed dimensionless
+coefficient multiplying `K`, and only the product `K · sin θ` affects the melt. Two readers
+here (an ice-sheet modeller and an ice-ocean modeller) independently found this a stumbling
+block, which suggests it is worth a sentence rather than being left implicit.
+
 **Suggestion:** state explicitly whether the constant slope is meant to be fixed across
 models (making `K` comparable) or recomputed per model grid (making it not), and if the
-latter, ask modellers to report the slope they used.
+latter, ask modellers to report the slope they used. And in the constant-slope case, say
+plainly that `sin θ` is then a fixed coefficient absorbed into `K` — or quote the value of
+`sin θ` directly rather than as the sine of an angle.
 
 ### A5. Basin index base: text sums 1…16, data files are 0…15 — proposed
 
@@ -333,6 +342,7 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
 | 2026-09-08 | Added B4b: the worked example uses rho_i = 917 in the melt factor and 918 in the mass conversion, leaving a spurious 0.1% factor where the two should cancel. |
 | 2026-09-08 | Added A8: the observational J4 datasets are distributed unfilled (6% coverage) while the regional model datasets are climatology-filled. |
+| 2026-09-08 | Extended A4: the sin(theta) notation is confusing when theta is constant, since it is then a fixed coefficient absorbed into K rather than a geometric quantity. |
 | 2026-09-08 | A3 settled by replication: continuous U(0,1) reproduces all three published percentiles exactly, so the manuscript text is what needs updating. |
 | 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |
 | 2026-09-08 | A7 corrected: |f| varies ~12% across ice-shelf latitudes (1.300e-4 at 63S to 1.453e-4 at 85S), not a factor of two, and multimelt's 1.4e-4 sits at 73.7S. Downgraded from open to minor. |

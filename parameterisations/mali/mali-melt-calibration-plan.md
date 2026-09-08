@@ -274,8 +274,15 @@ m = K sinθ (ρ_o/ρ_i) (c_o/L_i)² β_S S_loc (g / (2|f|)) |TF_loc| TF_loc
 
 Scope for the first pass:
 
-* **local** (Eq. 1), not semi-local (Eq. 2) — the protocol accepts either, and local matches
-  the worked example in this repository.
+* **both local (Eq. 1) and semi-local (Eq. 2)**, selected by
+  `config_ismip7_melt_semi_local`, defaulting to local. The protocol accepts either, and
+  local matches the worked example in this repository. Semi-local was added after Matt
+  Hoffman raised PR #48 (findings §1.8): it replaces the salinity and the `|TF|` amplitude
+  with basin means, keeping only the final `TF` factor local, which damps the melt pattern
+  the way MALI's current ISMIP6 method does. Having both means the open question of whether
+  a sharper melt pattern is acceptable can be settled by experiment rather than blocking the
+  ensemble. Melt stays exactly linear in `K` in both forms, since the basin means do not
+  depend on `K`, so the one-run-per-ocean-state strategy is unaffected.
 * **constant** Antarctic-mean slope, not the locally-varying one. Slope enters as a scalar so
   the linearity in findings F1 is preserved.
 * a new value of `config_basal_mass_bal_float` rather than a sub-option of `'ismip6'`, so the
@@ -283,8 +290,12 @@ Scope for the first pass:
 * new registry fields for `K` and the constant slope; `S_loc` needs a **3-D salinity input
   stream** alongside the existing TF one, which is the largest piece of new plumbing —
   compass's ocean step currently remaps only `tf`.
-* `f` **constant** at 1.4e-4, matching the reference implementation, rather than from
-  `latCell`. A latitude-varying `f` would shift `K` away from the published value; raised as
+* the slope and `f` **constant**, matching the reference implementation. With a constant
+  slope, `sin θ` is not a geometric quantity at all — it is a fixed dimensionless coefficient
+  multiplying `K`, and only the product affects the melt. It is kept as a separate option
+  only so `K` stays comparable with published values. That the notation invites confusion is
+  raised as feedback A4.
+* `f` constant rather than from `latCell`. A latitude-varying `f` would shift `K` away from the published value; raised as
   feedback A7.
 
 **A local slope was tried in MALI before and rejected.** `MALI-Dev/E3SM` PR #48 added a
