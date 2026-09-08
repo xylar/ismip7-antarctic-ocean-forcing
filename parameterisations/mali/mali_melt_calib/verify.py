@@ -83,13 +83,11 @@ def verify_run(run_dir, rtol=1.0e-10):
             'config_ismip7_melt_K',
             'config_ismip7_melt_sin_slope',
             'config_ismip7_melt_coriolis',
-            'config_ismip7_melt_semi_local',
         },
     )
     melt_k = float(params['config_ismip7_melt_K'])
     sin_slope = float(params['config_ismip7_melt_sin_slope'])
     coriolis = float(params['config_ismip7_melt_coriolis'])
-    semi_local = params['config_ismip7_melt_semi_local'].lower() == '.true.'
 
     def last(name):
         da = ds[name]
@@ -106,12 +104,6 @@ def verify_run(run_dir, rtol=1.0e-10):
     if coriolis != constants.coriolis:
         constants = type(constants)(
             **{**constants.__dict__, 'coriolis': coriolis}
-        )
-
-    if semi_local:
-        raise NotImplementedError(
-            'the semi-local form needs the basin means to be recomputed here; '
-            'verify the local form first'
         )
 
     # arcsin so that local_quadratic_melt's own sin() recovers the value MALI
@@ -136,7 +128,6 @@ def verify_run(run_dir, rtol=1.0e-10):
         'passed': bool(rel.size and rel.max() < rtol),
         'K': melt_k,
         'sin_slope': sin_slope,
-        'semi_local': semi_local,
     }
     return result
 
@@ -150,10 +141,7 @@ def main(argv=None):
 
     result = verify_run(run_dir)
     print(f'run: {run_dir}')
-    print(
-        f'  K = {result["K"]:.4e}, sin(slope) = {result["sin_slope"]:.6f}, '
-        f'semi-local = {result["semi_local"]}'
-    )
+    print(f'  K = {result["K"]:.4e}, sin(slope) = {result["sin_slope"]:.6f}')
     print(f'  melting cells:        {result["n_active"]}')
     lo, hi = result['mali_melt_range']
     print(f'  MALI melt kg/m2/yr:   {lo:.2f} .. {hi:.2f}')

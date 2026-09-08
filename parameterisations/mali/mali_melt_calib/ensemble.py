@@ -134,6 +134,7 @@ STREAMS_TEMPLATE = """<streams>
         input_interval="initial_only"
         runtime_format="single_file">
     <var name="ismip6shelfMelt_basin"/>
+    <var name="ismip6shelfMelt_deltaT"/>
 </stream>
 
 <stream name="ismip7_ocean_forcing"
@@ -159,6 +160,7 @@ STREAMS_TEMPLATE = """<streams>
     <var name="ismip6shelfMelt_TFdraft"/>
     <var name="ismip7shelfMelt_Sdraft"/>
     <var name="ismip6shelfMelt_basin"/>
+    <var name="ismip6shelfMelt_deltaT"/>
     <var name="cellMask"/>
     <var name="thickness"/>
     <var name="lowerSurface"/>
@@ -194,7 +196,6 @@ def setup_run(
     melt_k=8.5e-5,
     sin_slope=0.0051117,
     coriolis=1.4e-4,
-    semi_local=False,
     timestep='0000-00-01_00:00:00',
     extra_namelist=None,
 ):
@@ -218,8 +219,6 @@ def setup_run(
         ``graph_file``.
     melt_k, sin_slope, coriolis : float, optional
         ISMIP7 melt parameters.
-    semi_local : bool, optional
-        Use protocol Eq. (2) rather than Eq. (1).
     timestep : str, optional
         MPAS time string for the single step.
     extra_namelist : dict, optional
@@ -264,9 +263,6 @@ def setup_run(
             'config_ismip7_melt_K': repr(float(melt_k)),
             'config_ismip7_melt_sin_slope': repr(float(sin_slope)),
             'config_ismip7_melt_coriolis': repr(float(coriolis)),
-            'config_ismip7_melt_semi_local': '.true.'
-            if semi_local
-            else '.false.',
             'config_dt': f"'{timestep}'",
             'config_run_duration': f"'{timestep}'",
             'config_stop_time': "'none'",
@@ -295,7 +291,6 @@ def setup_ensemble(
     mesh_file,
     masks_file,
     forcing_dir,
-    semi_local=False,
     **kwargs,
 ):
     """
@@ -314,8 +309,6 @@ def setup_ensemble(
         As for :func:`setup_run`.
     forcing_dir : str
         Directory holding ``ocean_forcing_<state>.nc``.
-    semi_local : bool, optional
-        Use protocol Eq. (2).
     **kwargs
         Passed to :func:`setup_run`.
 
@@ -334,7 +327,6 @@ def setup_ensemble(
             mesh_file,
             masks_file,
             forcing,
-            semi_local=semi_local,
             **kwargs,
         )
     return runs

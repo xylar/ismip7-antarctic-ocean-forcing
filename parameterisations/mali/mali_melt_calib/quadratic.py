@@ -162,6 +162,7 @@ def local_quadratic_melt(
     slope,
     thermal_forcing_avg=None,
     constants=None,
+    delta_t=0.0,
 ):
     """
     Melt rate from the quadratic local parameterisation, in kg m-2 yr-1.
@@ -178,6 +179,11 @@ def local_quadratic_melt(
         Ice-draft slope angle in radians (positive).  A scalar gives the
         "constant Antarctic-mean slope" variant; a field gives the
         slope-dependent one.
+    delta_t : float or xarray.DataArray, optional
+        Basin-wide thermal-forcing correction, K.  Protocol §4.2.1 applies it
+        wherever the thermal forcing appears, so it is added to both the local
+        forcing and the averaged one.  Defaults to zero, which is what the
+        calibration uses; production runs are expected to use non-zero values.
     thermal_forcing_avg : xarray.DataArray, optional
         Thermal forcing to use in the ``|TF|`` factor.  Defaults to
         ``thermal_forcing``, giving the *local* form; pass a shelf- or
@@ -196,6 +202,8 @@ def local_quadratic_melt(
     """
     if thermal_forcing_avg is None:
         thermal_forcing_avg = thermal_forcing
+    thermal_forcing = thermal_forcing + delta_t
+    thermal_forcing_avg = thermal_forcing_avg + delta_t
 
     if constants is None:
         melt_factor = MELT_FACTOR

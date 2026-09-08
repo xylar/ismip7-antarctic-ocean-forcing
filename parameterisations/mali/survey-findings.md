@@ -363,6 +363,44 @@ per-year rate differs.  ``seconds_per_year`` is now part of the constants set so
 implementation uses its own year.  Negligible physically, but it would have sat in the melt
 fields as unexplained noise.
 
+### F7. Semi-local Burgard is degenerate with MALI's existing ISMIP6 method
+
+Implemented, then removed. The reasoning is worth keeping so it is not re-added.
+
+Write both out with the temperature correction in place:
+
+```
+ISMIP6 non-local:    melt = C6 * (TF_loc + dT) * |<TF> + dT|
+Burgard semi-local:  melt = C7 * <S> * (TF_loc + dT) * |<TF> + dT|
+
+C6 = gamma0 * (rho_sw c_o /(rho_i L_i))^2 * rho_i / s_yr
+C7 = K * sin(theta) * (rho_o/rho_i)(c_o/L_i)^2 * beta_S * g/(2|f|) * rho_i
+```
+
+Same functional form. Only the decomposition of the constant differs, so **with salinity
+held constant the two are algebraically identical** and every `K` has an exactly equivalent
+`gamma0`: at the published K = 8.5e-5 that is gamma0 = 11,519 m yr⁻¹, against MALI's
+production 14,500.
+
+With a *basin-mean* salinity they are not exactly identical, but the difference is the
+per-basin spread of `<S>`, measured on the mesh at **±0.8%** (34.11 to 34.67 across the 16
+basins). Since `dT_b` is fitted per basin, that freedom absorbs most of it.
+
+So providing semi-local would mean a second code path, plus a global reduction, computing
+what `iceshelf_melt_ismip6` already computes. It was removed on that basis;
+`config_basal_mass_bal_float = 'ismip6'` gives that behaviour.
+
+**The local form is not degenerate.** Replacing `|<TF>|` with `|TF_loc|` changes the spatial
+pattern of melt in a way no per-basin constant can reproduce — which is both why it is worth
+having and why it carries the risk Matt raised in PR #48 (§1.8).
+
+A corollary worth recording for the salinity question: since `beta_S` multiplies `S` rather
+than being a function of it (TEOS-10 gives only 0.04% variation in `beta_S` across
+34.2-34.8), melt is *linear* in salinity, so the ±0.8% maps one-to-one with no amplification.
+The neglected pressure dependence of `beta_S` is larger — 2.8% from the surface to 1800 dbar,
+using the surface value — and unlike a uniform offset it correlates with draft depth, so `K`
+does not absorb it.
+
 ---
 
 ## Reference paths

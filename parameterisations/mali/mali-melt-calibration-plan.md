@@ -272,7 +272,7 @@ guess for each. Each row names what we assume and what it costs if the answer di
 | # | Assumption | If wrong |
 |---|---|---|
 | **Q2** | **Superseded by the meeting:** use **Trevor's 4 km IC targeting ~2008**, which matches the melt-climatology era better than BedMachine v4's nominal ~2015. Not yet located on LCRC — see §5.5 | Re-run phases 3–4; the mask file and remapping weights are mesh-specific and would need regenerating |
-| **Q3** | **Agreed at the meeting to try it**, with skepticism noted. Implemented and verified (findings F6); both local and semi-local forms available | Fall back to calibrating `gamma0` in the ISMIP6 form; the pipeline is parameter-agnostic and unchanged |
+| **Q3** | **Agreed at the meeting to try it**, with skepticism noted. Implemented and verified (findings F6), local form only -- the semi-local form is degenerate with the ISMIP6 method MALI already has (findings F7) | Fall back to calibrating `gamma0` in the ISMIP6 form; the pipeline is parameter-agnostic and unchanged |
 | **Q7** | `config_ocean_data_extrapolation = .false.`. **Supported by evidence:** after bilinear remap to the MALI mesh the thermal forcing is 100% finite over all 385,379 cells, so there are no gaps for MALI to fill | Re-run phase 4 with extrapolation on; cheap |
 | **Q11** | pyremap does the remapping (§5.4); the driver script goes in `MPAS-Tools/landice`, branch `add-ismip7-mali-masks` | Move the script to Compass |
 | **Q13** | Build MALI **without** Albany, since `config_velocity_solver = 'none'` | Use the existing Albany build (below) |
@@ -300,15 +300,13 @@ m = K sinθ (ρ_o/ρ_i) (c_o/L_i)² β_S S_loc (g / (2|f|)) |TF_loc| TF_loc
 
 Scope for the first pass:
 
-* **both local (Eq. 1) and semi-local (Eq. 2)**, selected by
-  `config_ismip7_melt_semi_local`, defaulting to local. The protocol accepts either, and
-  local matches the worked example in this repository. Semi-local was added after Matt
-  Hoffman raised PR #48 (findings §1.8): it replaces the salinity and the `|TF|` amplitude
-  with basin means, keeping only the final `TF` factor local, which damps the melt pattern
-  the way MALI's current ISMIP6 method does. Having both means the open question of whether
-  a sharper melt pattern is acceptable can be settled by experiment rather than blocking the
-  ensemble. Melt stays exactly linear in `K` in both forms, since the basin means do not
-  depend on `K`, so the one-run-per-ocean-state strategy is unaffected.
+* **local only** (Eq. 1). The semi-local form of Eq. (2) was implemented and then
+  **removed**, because it is degenerate with the ISMIP6 method MALI already has — see
+  findings §F7. The local form is the one that genuinely differs.
+* the basin-wide temperature correction `ismip6shelfMelt_deltaT`, applied wherever the
+  thermal forcing appears as protocol §4.2.1 prescribes, exactly as `'ismip6'` does. It
+  defaults to zero, which is what the calibration uses, but production runs are expected to
+  set it.
 * **constant** Antarctic-mean slope, not the locally-varying one. Slope enters as a scalar so
   the linearity in findings F1 is preserved.
 * a new value of `config_basal_mass_bal_float` rather than a sub-option of `'ismip6'`, so the
@@ -416,7 +414,7 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | **2. Terms on unstructured meshes** ✅ | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; **replication of the published quadratic numbers reproduces all three percentiles exactly** | — | `terms.py`, `quadratic.py`, `replicate.py`, 16 tests |
 | **3. Mesh preparation** ✅ | `interpolate_ismip7_masks_to_mali.py` in `MPAS-Tools/landice/mesh_tools_li`, using pyremap; basins, BFRN bins, floating mask and PIG/Dotson regions on the mesh, with a bidirectional cross-check against `regionCellMasks` | — | MPAS-Tools `f7407bc6`; `work/mesh/ais_4to20km_ismip7_masks.nc` |
 | **4. Forcing remap** ✅ | `forcing.py` remaps TF **and salinity** for the 11 recommended states (26 available) via pyremap, in compass's field names and dimension order; `datasets.py` is the shared ocean-state registry | — | `work/forcing/ocean_forcing_*.nc` |
-| **5. MALI melt module** ✅ | Burgard local **and semi-local** forms implemented on `mali/add-burgard-melt-param`, pushed to `xylar/E3SM`; builds and links; melt verified against `quadratic.py` to 7e-16 (findings F6) | — | MALI branch, 2 commits |
+| **5. MALI melt module** ✅ | Burgard **local** form on `mali/add-burgard-melt-param`; builds, runs one timestep on the 4-20 km mesh at 64 tasks, melt verified against `quadratic.py` to 7e-16 (findings F6).  The basin correction `dT_b` is applied per protocol §4.2.1 and read from the masks file | — | MALI branch, 2 commits |
 | **6. MALI ensemble** | run directories, namelists/streams, job scripts (done, one run verified); rewrite the 10 remaining forcing files with the fixed writer; 3-value linearity check; production runs | Q2: the mesh choice invalidates the masks and weights | melt fields |
 | **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
 | **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
