@@ -24,6 +24,8 @@ from __future__ import annotations
 import os
 from collections import OrderedDict
 
+import xarray as xr
+
 #: namelist options set for every melt-diagnostic run
 DIAGNOSTIC_NAMELIST = {
     # melt does not depend on velocity, and skipping it avoids needing Albany
@@ -247,9 +249,18 @@ def setup_run(
             os.remove(link)
         os.symlink(os.path.abspath(target), link)
 
+    # MPAS takes dimension sizes from the *input* stream, and the mesh file
+    # has no nISMIP6OceanLayers.  Without this the 3-D forcing fields are
+    # allocated against a zero-length dimension and the run dies trying to
+    # allocate hundreds of GB.  Read it from the forcing rather than hard-
+    # coding 30, so it stays right if ISMIP7 changes the vertical grid.
+    with xr.open_dataset(forcing_file) as ds_forcing:
+        n_layers = ds_forcing.sizes['nISMIP6OceanLayers']
+
     overrides = dict(DIAGNOSTIC_NAMELIST)
     overrides.update(
         {
+            'config_nISMIP6OceanLayers': str(n_layers),
             'config_ismip7_melt_K': repr(float(melt_k)),
             'config_ismip7_melt_sin_slope': repr(float(sin_slope)),
             'config_ismip7_melt_coriolis': repr(float(coriolis)),
