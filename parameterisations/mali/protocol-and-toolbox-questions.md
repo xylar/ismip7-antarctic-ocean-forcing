@@ -2,7 +2,7 @@
 
 Collected while implementing the calibration for MALI — the first unstructured-mesh,
 variable-resolution ice-sheet model to go through this protocol. See
-[`mali-melt-calibration-plan.md`](mali-melt-calibration-plan.md) §4.5 for why this document
+[`mali-melt-calibration-plan.md`](mali-melt-calibration-plan.md) §3.5 for why this document
 exists.
 
 **Part A** is feedback on the manuscript, to pass back to Ronja. **Part B** is concrete
@@ -170,7 +170,7 @@ function signatures.
 
 **Change:** accept a cell-area array instead of a scalar resolution, and operate on a generic
 cell dimension so the same functions serve structured grids (area = `reso**2` broadcast) and
-unstructured meshes (area = `areaCell`). This is what we are contributing; see plan §4.4.
+unstructured meshes (area = `areaCell`). This is what we are contributing; see plan §3.4.
 
 ### B3. `calculate_term1` takes an unused `nBasins` argument — proposed
 
