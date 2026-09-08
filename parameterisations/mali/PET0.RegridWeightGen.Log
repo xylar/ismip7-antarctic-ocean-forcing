@@ -1,0 +1,51 @@
+20260908 085721.075 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 085721.076 INFO             PET0 !!! THE ESMF_LOG IS SET TO OUTPUT ALL LOG MESSAGES !!!
+20260908 085721.076 INFO             PET0 !!!     THIS MAY CAUSE SLOWDOWN IN PERFORMANCE     !!!
+20260908 085721.076 INFO             PET0 !!! FOR PRODUCTION RUNS, USE:                      !!!
+20260908 085721.076 INFO             PET0 !!!                   ESMF_LOGKIND_Multi_On_Error  !!!
+20260908 085721.076 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 085721.076 INFO             PET0 Running with ESMF Version   : 8.9.1
+20260908 085721.076 INFO             PET0 ESMF library build date/time: "Jul 12 2026" "23:14:20"
+20260908 085721.076 INFO             PET0 ESMF library build location : /home/conda/feedstock_root/build_artifacts/bld/rattler-build_esmf_1783898060/work
+20260908 085721.076 INFO             PET0 ESMF_COMM                   : mpich
+20260908 085721.076 INFO             PET0 ESMF_MOAB                   : enabled
+20260908 085721.076 INFO             PET0 ESMF_LAPACK                 : enabled
+20260908 085721.076 INFO             PET0 ESMF_NETCDF                 : enabled
+20260908 085721.076 INFO             PET0 ESMF_PNETCDF                : disabled
+20260908 085721.076 INFO             PET0 ESMF_PIO                    : enabled
+20260908 085721.076 INFO             PET0 ESMF_YAMLCPP                : enabled
+20260908 085731.452 INFO             PET0  Finalizing ESMF
+20260908 085943.946 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 085943.946 INFO             PET0 !!! THE ESMF_LOG IS SET TO OUTPUT ALL LOG MESSAGES !!!
+20260908 085943.946 INFO             PET0 !!!     THIS MAY CAUSE SLOWDOWN IN PERFORMANCE     !!!
+20260908 085943.946 INFO             PET0 !!! FOR PRODUCTION RUNS, USE:                      !!!
+20260908 085943.946 INFO             PET0 !!!                   ESMF_LOGKIND_Multi_On_Error  !!!
+20260908 085943.946 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 085943.946 INFO             PET0 Running with ESMF Version   : 8.9.1
+20260908 085943.946 INFO             PET0 ESMF library build date/time: "Jul 12 2026" "23:14:20"
+20260908 085943.946 INFO             PET0 ESMF library build location : /home/conda/feedstock_root/build_artifacts/bld/rattler-build_esmf_1783898060/work
+20260908 085943.946 INFO             PET0 ESMF_COMM                   : mpich
+20260908 085943.946 INFO             PET0 ESMF_MOAB                   : enabled
+20260908 085943.946 INFO             PET0 ESMF_LAPACK                 : enabled
+20260908 085943.946 INFO             PET0 ESMF_NETCDF                 : enabled
+20260908 085943.946 INFO             PET0 ESMF_PNETCDF                : disabled
+20260908 085943.946 INFO             PET0 ESMF_PIO                    : enabled
+20260908 085943.946 INFO             PET0 ESMF_YAMLCPP                : enabled
+20260908 085954.086 INFO             PET0  Finalizing ESMF
+20260908 090350.622 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 090350.622 INFO             PET0 !!! THE ESMF_LOG IS SET TO OUTPUT ALL LOG MESSAGES !!!
+20260908 090350.622 INFO             PET0 !!!     THIS MAY CAUSE SLOWDOWN IN PERFORMANCE     !!!
+20260908 090350.622 INFO             PET0 !!! FOR PRODUCTION RUNS, USE:                      !!!
+20260908 090350.622 INFO             PET0 !!!                   ESMF_LOGKIND_Multi_On_Error  !!!
+20260908 090350.622 INFO             PET0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+20260908 090350.622 INFO             PET0 Running with ESMF Version   : 8.9.1
+20260908 090350.622 INFO             PET0 ESMF library build date/time: "Jul 12 2026" "23:14:20"
+20260908 090350.622 INFO             PET0 ESMF library build location : /home/conda/feedstock_root/build_artifacts/bld/rattler-build_esmf_1783898060/work
+20260908 090350.622 INFO             PET0 ESMF_COMM                   : mpich
+20260908 090350.624 INFO             PET0 ESMF_MOAB                   : enabled
+20260908 090350.624 INFO             PET0 ESMF_LAPACK                 : enabled
+20260908 090350.624 INFO             PET0 ESMF_NETCDF                 : enabled
+20260908 090350.624 INFO             PET0 ESMF_PNETCDF                : disabled
+20260908 090350.624 INFO             PET0 ESMF_PIO                    : enabled
+20260908 090350.624 INFO             PET0 ESMF_YAMLCPP                : enabled
+20260908 090401.061 INFO             PET0  Finalizing ESMF

@@ -34,15 +34,17 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from mali_melt_calib.datasets import (
+    DEFAULT_DATA_ROOT,
+    OBS_YEARS,
+    OCEAN_MODELS,
+)
 from mali_melt_calib.quadratic import local_quadratic_melt, mean_slope
 from mali_melt_calib.terms import (
     average_by_group,
     integrate_by_group,
     uniform_area,
 )
-
-#: default root of the ISMIP7 AIS datasets on LCRC
-DEFAULT_DATA_ROOT = '/lcrc/group/e3sm/ac.xylar/ismip7/forcing-data/data/AIS'
 
 #: ISMIP grid resolution used for the published calibration, m
 RESO = 8000.0
@@ -51,39 +53,6 @@ RESO = 8000.0
 K_VALUES = np.arange(0.25e-5, 3.025e-4, 0.25e-5)
 
 CELL_DIMS = ('y', 'x')
-
-#: ocean-model states, as file prefixes and the labels the toolbox expects
-OCEAN_MODELS = [
-    ('Mathiot_NEMO_{state}_v3_', 'mathiot'),
-    ('Timmermann_FESOM_{state}_v3_', 'timmermann'),
-    ('Naughten_FESOM_ACCESS_{state}_v2_', 'naughten_ais_1'),
-    ('Naughten_FESOM_MMM_{state}_v2_', 'naughten_ais_2'),
-    ('Jourdain-Naughten_NEMO-MITgcm_{state}_', 'jourdain_naughten'),
-    ('Naughten_MITamu-MITwed_{state}_', 'naughten_naughten'),
-]
-
-#: models whose domain covers only the Weddell Sea (ISMIP7 basin 14)
-WEDDELL_ONLY = ('timmermann', 'haid')
-
-#: models covering the Amundsen (basin 9) and Weddell (basin 14) only
-AMUNDSEN_WEDDELL_ONLY = ('jourdain_naughten', 'naughten_naughten')
-
-#: years of Amundsen ocean observations
-OBS_YEARS = [
-    1994,
-    2000,
-    2006,
-    2007,
-    2009,
-    2010,
-    2011,
-    2012,
-    2014,
-    2016,
-    2018,
-    2019,
-    2020,
-]
 
 PIG_ID = 110
 DOTSON_ID = 97
@@ -295,7 +264,7 @@ def build_terms(data_root=DEFAULT_DATA_ROOT, k_values=K_VALUES, verbose=True):
     means = {}
     for state in ('cold', 'warm'):
         per_model = []
-        for prefix, label in OCEAN_MODELS:
+        for prefix, label, covered in OCEAN_MODELS:
             stem = prefix.format(state=state)
             melt = unit_melt(
                 os.path.join(model_dir, f'{stem}TF.nc'),
@@ -303,10 +272,8 @@ def build_terms(data_root=DEFAULT_DATA_ROOT, k_values=K_VALUES, verbose=True):
                 static,
             )
             # regional models only constrain the basins they cover
-            if label in WEDDELL_ONLY:
-                melt = melt.where(basins == 14)
-            elif label in AMUNDSEN_WEDDELL_ONLY:
-                melt = melt.where((basins == 9) | (basins == 14))
+            if covered is not None:
+                melt = melt.where(basins.isin(covered))
             agg = average_by_group(
                 melt, area, mask, basins, CELL_DIMS, group_dim='basins'
             )

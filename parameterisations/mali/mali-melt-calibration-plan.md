@@ -224,7 +224,7 @@ guess for each. Each row names what we assume and what it costs if the answer di
 | **Q1** | `MALI-Dev/E3SM` @ `develop` is authoritative. Work on branch `mali/add-burgard-melt-param` | Rebase onto the right branch |
 | **Q2** | Calibrate on `ais_4to20km.20250625.nc`, the newest vintage | Re-run phases 3–6; all vintages are geometrically identical (findings F3), so the risk is near zero |
 | **Q3** | **Implement it.** Add the Burgard et al. (2022) *local* quadratic (Eq. 1) with a constant Antarctic-mean slope as a new `config_basal_mass_bal_float` option; calibrate `K` and also report the ISMIP6-form `gamma0` | Wasted MALI development, but the calibration pipeline is unchanged — the toolbox is parameter-agnostic, so we fall back to calibrating `gamma0` |
-| **Q7** | `config_ocean_data_extrapolation = .false.` — the ISMIP7 TF is already extrapolated into cavities on the 8 km grid | Re-run phase 4 with extrapolation on; cheap |
+| **Q7** | `config_ocean_data_extrapolation = .false.`. **Supported by evidence:** after bilinear remap to the MALI mesh the thermal forcing is 100% finite over all 385,379 cells, so there are no gaps for MALI to fill | Re-run phase 4 with extrapolation on; cheap |
 | **Q11** | pyremap does the remapping (§5.4); the driver script goes in `MPAS-Tools/landice`, branch `add-ismip7-mali-masks` | Move the script to Compass |
 | **Q13** | Build MALI **without** Albany, since `config_velocity_solver = 'none'` | Use the existing Albany build (below) |
 | **A3** | ~~Assumption~~ **confirmed**: continuous `U(0,1)` weights reproduce all three published percentiles exactly (phase 2). The manuscript text is what is out of date | n/a |
@@ -306,8 +306,8 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | **0. Feedback log** | append to `protocol-and-toolbox-questions.md` throughout; do not defer to the end | — | notes for Ronja; items for the PR |
 | **1. Scaffold** ✅ | pixi env; package skeleton + CLI | — | `pixi.toml`, `mali_melt_calib/` |
 | **2. Terms on unstructured meshes** ✅ | area-weighted `calculate_term1..4`; tests reproducing the structured-grid answers on a uniform-area mesh; **replication of the published quadratic numbers reproduces all three percentiles exactly** | — | `terms.py`, `quadratic.py`, `replicate.py`, 16 tests |
-| **3. Mesh preparation** | pyremap-based mask script in `MPAS-Tools/landice` (§5.4); assemble the mesh file from `ais_4to20km.20250625.nc`, asserting the F2 basin mapping | — | MPAS-Tools PR + `mali-melt-calib mesh` |
-| **4. Forcing remap** | 8 km → MALI-mesh remap of TF **and `so`** for 11 (then 26) ocean states | — | `mali-melt-calib forcing` |
+| **3. Mesh preparation** ✅ | `interpolate_ismip7_masks_to_mali.py` in `MPAS-Tools/landice/mesh_tools_li`, using pyremap; basins, BFRN bins, floating mask and PIG/Dotson regions on the mesh, with a bidirectional cross-check against `regionCellMasks` | — | MPAS-Tools `f7407bc6`; `work/mesh/ais_4to20km_ismip7_masks.nc` |
+| **4. Forcing remap** ✅ | `forcing.py` remaps TF **and salinity** for the 11 recommended states (26 available) via pyremap, in compass's field names and dimension order; `datasets.py` is the shared ocean-state registry | — | `work/forcing/ocean_forcing_*.nc` |
 | **5. MALI melt module** | implement the Burgard local quadratic in MALI (§5.3) on `mali/add-burgard-melt-param`; build without Albany | — | MALI branch |
 | **6. MALI ensemble** | run directories, namelists/streams, job scripts; 3-value linearity check; production runs | — | melt fields |
 | **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |

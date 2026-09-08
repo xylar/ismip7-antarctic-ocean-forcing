@@ -211,6 +211,31 @@ absorbs the mean.
 **Suggestion:** state in §4.1.1 that `f` is taken as constant, and give the value, so
 implementers do not each decide independently.
 
+### A8. The observational datasets are not climatology-filled, but the regional model ones are — open
+
+The ISMIP7 datasets treat partial spatial coverage two different ways, and only one is
+documented:
+
+| dataset | finite fraction on the 8 km grid |
+|---|---|
+| `Jourdain-Naughten_NEMO-MITgcm_cold_TF.nc` | 1.0000 |
+| `Timmermann_FESOM_cold_v3_TF.nc` | 1.0000 |
+| `Obs_2009_TF.nc` | 0.0603 |
+
+§A9 says the regional ocean-model domains have "the remaining basins filled with the ISMIP7
+ocean climatology", and the distributed files are indeed complete. §A10 says the
+observational profiles are applied "uniformly to the entire Amundsen basin", and the
+distributed files are undefined outside it — about 94% missing.
+
+An ice-sheet model needs valid forcing wherever it has ice, so every group using the J4
+datasets has to invent a fill, and different choices will give different melt outside the
+Amundsen (which does not enter J4, but does have to not crash the model). We fill from the
+present-day climatology before remapping, matching how the model datasets were prepared.
+
+**Suggestion:** either distribute the observational files climatology-filled, as the model
+files already are, or state in §A10 what modellers should do outside the covered basin. The
+former would be more consistent and would remove a step everyone has to reinvent.
+
 ---
 
 ## Part B — this repository
@@ -289,6 +314,7 @@ published numbers. This matters because the 31 July 2026 focus-group update note
 | Date | Change |
 |---|---|
 | 2026-09-08 | Created; seeded with A1–A6 and B1–B5 from the initial survey. |
+| 2026-09-08 | Added A8: the observational J4 datasets are distributed unfilled (6% coverage) while the regional model datasets are climatology-filled. |
 | 2026-09-08 | A3 settled by replication: continuous U(0,1) reproduces all three published percentiles exactly, so the manuscript text is what needs updating. |
 | 2026-09-08 | A4 partly answered by measurement: the mean draft slope on Bedmap3 at 8 km is sin(theta) = 0.0051117, matching the paper's 0.005. Added A7 on the constant Coriolis parameter. |
 | 2026-09-08 | A7 corrected: |f| varies ~12% across ice-shelf latitudes (1.300e-4 at 63S to 1.453e-4 at 85S), not a factor of two, and multimelt's 1.4e-4 sits at 73.7S. Downgraded from open to minor. |

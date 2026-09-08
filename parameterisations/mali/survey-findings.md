@@ -273,6 +273,24 @@ the 8 km grid with multimelt's finite-difference scheme, is **sin θ = 0.0051117
 the protocol's stated ``sinθ ≈ 0.005``, and confirming that the paper's value is the
 geometry-derived mean rather than Burgard et al.'s 2.9e-3.
 
+### F5. The remapped thermal forcing has no gaps on the MALI mesh
+
+Bilinearly remapping the ISMIP7 present-day climatology from the 8 km grid onto
+`ais_4to20km.20250625.nc` gives thermal forcing that is **finite at all 385,379 cells**, over
+all 30 ocean layers.
+
+This is expected — the ISMIP7 fields are already extrapolated into ice-shelf cavities and
+under grounded ice on the 8 km grid (protocol §3.2) — but it is worth having measured, because
+it is the evidence behind assuming `config_ocean_data_extrapolation = .false.` (plan §5.2,
+Q7). MALI has nothing left to extrapolate.
+
+The check to repeat if the mesh or the remapping method changes:
+
+```python
+tf = ds['ismip6shelfMelt_3dThermalForcing'].values
+assert np.isfinite(tf).all()
+```
+
 ---
 
 ## Reference paths
