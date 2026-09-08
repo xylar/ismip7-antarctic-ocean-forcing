@@ -1,0 +1,6 @@
+# ESMF_RegridWeightGen writes these into the working directory
+PET*.RegridWeightGen.Log
+# remapping weights and remapped forcing are large; regenerate with
+# `mali-melt-calib forcing`
+map_*.nc
+ocean_forcing_*.nc
