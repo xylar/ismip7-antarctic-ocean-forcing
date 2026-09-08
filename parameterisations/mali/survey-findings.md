@@ -431,6 +431,61 @@ calibration terms use melt, ``areaCell`` and the masks, none of which drift.  Bu
 diagnostic that pairs output geometry with output melt is inconsistent by up to a metre of
 draft**, which is worth knowing before the Compass port writes its own analysis.
 
+### F9. Linearity in K, measured in MALI rather than argued
+
+F1 derives the linearity from the algebra.  This measures it: three MALI runs on the Zhou
+climatology at K = 4.0e-5, 8.5e-5 and 1.3e-4, everything else identical.
+
+| K | total melt (Gt/yr) | max │relative deviation from exact scaling│ |
+|---|---:|---:|
+| 4.0e-5 | 713.81 | 6.4e-16 |
+| 8.5e-5 | 1516.84 | 0 (reference) |
+| 1.3e-4 | 2319.87 | 6.4e-16 |
+
+Total melt divided by K is identical to every printed digit (1.78451398566586e7).  Melt is
+exactly proportional to K at machine precision, so the ensemble needs **one run per ocean
+state**, not one per (state, K) pair -- about 11 runs rather than 1,300.  Anything built on
+this workflow can rely on it.
+
+### F10. The local form redistributes melt toward buttressing-relevant ice
+
+The open question from PR #48 (§1.8) is whether the Burgard *local* form gives a melt
+pattern MALI can live with.  Two runs on the same Zhou climatology, same mesh, same basin
+mask, dT = 0: ISMIP7 local at K = 8.5e-5, and ISMIP6 non-local.  The ISMIP6 field is then
+rescaled to the same total melt, so only the **pattern** is compared.
+
+Totals: local 1516.8 Gt/yr; non-local at gamma0 = 11,519 gives 1131.5.  The gamma0 that
+matches the local total is **15,443 m/yr**, close to MALI's production 14,500 -- so the
+local form at the protocol's published K is in a sensible melt regime, not an extreme one.
+
+At equal total melt the patterns still differ substantially:
+
+* correlation 0.92 over the 109,412 melting cells (unweighted)
+* area-weighted RMS difference 1105 kg/m²/yr, **110% of the mean melt** of 1005
+* peak local melt 32,153 vs 20,340 kg/m²/yr -- the local form is **58% peakier**
+
+The redistribution is systematic in exactly the direction that matters dynamically.  By BFRN
+bin -- the J2 target, bin 9 being the most buttressing-relevant and bin 0 passive ice:
+
+| BFRN bin | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| local / non-local | 0.81 | 0.82 | 0.72 | 0.85 | 0.81 | 0.97 | 0.93 | 1.04 | **1.22** | **1.27** |
+
+The local form moves melt off passive ice and onto buttressing-relevant ice: **+27% in bin 9,
++22% in bin 8, −19% to −28% in bins 0-4.**  Per basin the ratios span 0.86 to 1.54.
+
+**Why this matters for the choice.** The per-basin differences are largely absorbable by a
+fitted dT_b, since that is a per-basin constant.  The BFRN redistribution is **not** -- it is
+a *within*-basin change in where the melt sits, and no per-basin constant can undo it.  So
+switching to the local form is not melt-neutral for ice dynamics even after recalibration:
+it puts more melt where buttressing responds most.  Spatially (see
+``work/tests/melt_local_vs_nonlocal.png``) the difference concentrates at shelf margins and
+calving fronts; Ross and Ronne interiors barely change.
+
+This does not settle the choice, but it makes the skepticism concrete and quantified rather
+than qualitative.  Caveats: one ocean state, dT = 0 throughout, and the present-day mesh
+geometry.
+
 ---
 
 ## Reference paths
