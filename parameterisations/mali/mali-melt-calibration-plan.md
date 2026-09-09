@@ -422,6 +422,11 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 
 ### State at handoff to the Compass port
 
+See [`compass-port-handoff.md`](compass-port-handoff.md) for the full brief given to the agent
+implementing the Compass test group.  A worktree for that work is at
+`/home/ac.xylar/compass/add-ismip7-calibration`, branch `add-ismip7-calibration`.
+
+
 **Carries over unchanged.** The MALI melt code (`mali/add-burgard-melt-param`, verified against
 the Python reference to 7e-16) and the mask tool (`MPAS-Tools/add-ismip7-mali-masks`).  Both are
 pushed to `xylar` forks.
