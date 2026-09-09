@@ -415,9 +415,35 @@ mali/add-burgard-melt-param/                  E3SM (MALI-Dev)
 | **3. Mesh preparation** ✅ | `interpolate_ismip7_masks_to_mali.py` in `MPAS-Tools/landice/mesh_tools_li`, using pyremap; basins, BFRN bins, floating mask and PIG/Dotson regions on the mesh, with a bidirectional cross-check against `regionCellMasks` | — | MPAS-Tools `f7407bc6`; `work/mesh/ais_4to20km_ismip7_masks.nc` |
 | **4. Forcing remap** ✅ | `forcing.py` remaps TF **and salinity** for the 11 recommended states (26 available) via pyremap, in compass's field names and dimension order; `datasets.py` is the shared ocean-state registry | — | `work/forcing/ocean_forcing_*.nc` |
 | **5. MALI melt module** ✅ | Burgard **local** form on `mali/add-burgard-melt-param`; builds, runs one timestep on the 4-20 km mesh at 64 tasks, melt verified against `quadratic.py` to 7e-16 (findings F6).  The basin correction `dT_b` is applied per protocol §4.2.1 and read from the masks file | — | MALI branch, 2 commits |
-| **6. MALI ensemble** | run directories, namelists/streams, job scripts (done, one run verified); rewrite the 10 remaining forcing files with the fixed writer; 3-value linearity check; production runs | Q2: the mesh choice invalidates the masks and weights | melt fields |
-| **7. Calibration + report** | assemble ensembles; 100,000-sample optimisation; protocol Fig. 5/7 equivalents; per-basin shelf area; relaxed-IC sensitivity; optional ΔT | — | parameter values + plots |
-| **8. Upstream PRs** | the MALI example and mesh-agnostic terms here; the mask tool to MPAS-Tools; the melt module to MALI-Dev | — | three PRs |
+| **6. MALI ensemble** ✅ | all **28** ocean states remapped (the 7th model, `Haid_FESOM`, was missing from the registry); **56 runs** -- 28 states x local and semi-local -- all completing; linearity in `K` measured at machine precision (F9); vertical interpolation verified on all four code paths (F8) | Q2: changing the mesh invalidates the masks and the forcing remap, so an IC change means re-running the pipeline (~1 h, fully scripted) | `work/ensemble/`, melt fields |
+| **7. Calibration + report** ✅ | 100,000-sample optimisation on the MALI mesh, reproducing the published 8 km distribution to within a grid step (F12); repeated over all 28 states (F14); term-by-term comparison with significance testing (F13, F14); extrapolation behaviour at the extreme anchor (F15); generalised-exponent exploration, a negative result (F16) | — | **K = 5.0e-5 / 7.75e-5 / 1.15e-4**; 3 figures in the workspace root |
+| **8. Upstream PRs** | all three branches are pushed to `xylar` forks; no PRs opened yet | — | three PRs |
+| **9. Compass port** | the next step; see below | — | Compass test group |
+
+### State at handoff to the Compass port
+
+**Carries over unchanged.** The MALI melt code (`mali/add-burgard-melt-param`, verified against
+the Python reference to 7e-16) and the mask tool (`MPAS-Tools/add-ismip7-mali-masks`).  Both are
+pushed to `xylar` forks.
+
+**Reimplemented by the port.** `forcing.py`, `ensemble.py` and `verify.py` are prototypes for
+run setup and are what a Compass test group replaces.
+
+**Reusable analysis.** `terms.py`, `quadratic.py`, `calibrate.py` and `replicate.py` are
+mesh-agnostic and are the intended contribution back to this repository as the MALI worked
+example.
+
+**Still to do, in the port rather than here.**
+
+* the downstream `dT_b` fit (protocol §4.2.1 option 2), which the calibration deliberately
+  leaves at zero
+* regression tests, using Compass's own baseline-comparison framework
+* pointing at the chosen initial condition; the IC affects the numbers only slightly and
+  reduces to which file the database entry names
+
+**Still open.** Whether MALI adopts the local or the semi-local form.  The evidence points
+slightly to local (F14, F15) but not decisively, and MALI supports both paths already, so the
+port does not need the answer before it starts.
 
 **Start with phase 2.** It needs no MALI runs and no open answers, and reproducing the
 published quadratic numbers through our own code path validates the whole of stage 2 while
