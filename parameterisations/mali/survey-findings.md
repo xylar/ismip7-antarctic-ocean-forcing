@@ -752,6 +752,74 @@ quadratic in thermal forcing does not capture how a cold cavity's circulation re
 warming.  Anchoring on an extreme state limits the damage, which is the point of including
 one, but no choice of `K` fixes the basin-to-basin pattern.
 
+### F16. Generalising the exponents does not give a better parameterisation
+
+F15 showed both sanctioned forms over-predict warming sensitivity in cold-cavity basins.
+Since `melt ~ K sgn(TF)|TF_loc|^p |<TF>_b|^q` contains local at **(2,0)** and semi-local at
+**(1,1)**, and both sit at **p+q = 2**, the two differ only in *locality* -- `p/(p+q)` -- and
+share the same sensitivity to uniform warming.  The obvious question is whether some other
+`(p,q)` does better.  Scanned on a 61x61 grid over p in [0,4], q in [-1,3], using the 28-state
+ensemble already on disk, so no new MALI runs were needed.
+
+At (2,0) the scan reproduces the independent MALI path to +0.1% (J1), +0.4% (J2) and +0.3%
+(J4); J3 differs by -4.4% because the scan omits the salinity factor, which slightly shifts
+the warm-minus-cold basin means.
+
+| term | local (2,0) | semi-local (1,1) | best | at (p,q) | p+q |
+|---|---:|---:|---:|---|---:|
+| J1 | 32.47 | 32.96 | 32.10 | (1.60, 0.47) | 2.07 |
+| J2 | 132.70 | 167.57 | 16.07 | (3.87, 2.93) | 6.80 |
+| J3 | 2053.4 | 1871.4 | 1811.6 | (0.47, 1.80) | 2.27 |
+| J4 | 12.10 | 15.21 | 9.62 | (4.00, 0.60) | 4.60 |
+
+**Only J3 survives cross-validation.**  The apparent 88% gain on J2 and 21% on J4 is
+overfitting, and the landscape shows why: J1 and J3 have *diagonal valleys* -- they constrain
+`p+q` but barely constrain locality -- while **J2 and J4 have no interior optimum at all** and
+run to the grid corner.
+
+| term | held-out test | fitted (p,q) across splits | generalises |
+|---|---|---|---|
+| J3 | 3 unseen ocean models | **(0.40, 1.80) in every split** | **5/5** |
+| J4 | unseen observation years | (3.47,1.87), (4.00,0.27), (3.53,0.73), (4.00,−0.73), (3.47,1.87) | 2/5 |
+
+J3's optimum is stable and reproducible, and beats both reference forms on ocean models it
+never saw.  J4's is unstable -- `q` swings from −0.73 to +1.87 depending on which years are
+held out -- and fails more often than not.
+
+**Two conclusions, both negative for the exercise.**
+
+*The prior expectation was wrong.*  We expected the fix to be a form slightly **less** than
+quadratic (`p+q < 2`), reducing the over-predicted sensitivity.  J3's cross-validated optimum
+is at **p+q = 2.2, slightly more than quadratic**, and its advantage comes almost entirely
+from the *locality* axis (p = 0.4, q = 1.8 -- strongly non-local), not the sensitivity axis.
+Lowering `p+q` does not help because the sensitivity bias is basin-*dependent*: some basins are
+over-predicted 3-4x and others under-predicted, so a global reduction trades one error for
+another.  That is the same obstacle F15 identified, now measured.
+
+*The robust gain is not worth having.*  J3's cross-validated optimum beats semi-local by only
+**0-8%** across splits (and local by 10-28%).  Buying that costs two fitted exponents, the
+Jenkins velocity-scale derivation that gives (2,0) its physical footing, and -- since the only
+robust signal points to `q >> p` -- it argues for *more* non-locality, i.e. towards what MALI
+already does, not towards a new scheme.
+
+Taken with the predictor analysis (no exogenous quantity available -- TF at draft,
+stratification, water column, bed depth -- explains *where* the forms fail; only shelf area
+does, at r = +0.85, and area is endogenous, since shelves are large *because* their cavities
+are cold, and a correction keyed on it would weaken as a shelf warms and shrank, which is a
+positive feedback into exactly the runaway it is meant to prevent), the conclusion is that
+**the missing physics is not recoverable from thermal forcing and present-day geometry alone.**
+A cold cavity's melt is limited by its overturning circulation, which is what PICO and plume
+models represent explicitly and no power law of TF can stand in for.
+
+Figure: ``mali_melt_pq_landscape.png`` in the workspace root.
+
+*Method note.* The optimal scale for each `(p,q)` is solved exactly rather than scanned: the
+minimiser of a weighted sum of `|s*u_i - t_i|` is a weighted median of the ratios `t_i/u_i`
+with weights `w_i|u_i|`.  A first attempt used a scale *grid*, which silently clipped -- the
+optimum sat at ~2500 against a grid maximum of 1e3 -- and produced a spurious 97% "gain" that
+was really the clipping easing off in one corner.  It was caught because (2,0) disagreed with
+the known MALI values; that check is worth keeping whenever this scan is re-run.
+
 ---
 
 ## Reference paths
