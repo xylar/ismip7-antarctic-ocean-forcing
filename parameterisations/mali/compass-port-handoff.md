@@ -21,12 +21,18 @@ F6, … and each is worth reading before touching the corresponding area.
 | Compass main checkout | `/home/ac.xylar/compass/main` | `main` | — |
 | MALI with the Burgard melt module | `.../MALI-melt-calibration/mali/add-burgard-melt-param` | `mali/add-burgard-melt-param` | `xylar/E3SM` |
 | Mask tool | `~/mpas_work/MPAS-Tools/add-ismip7-mali-masks` | `add-ismip7-mali-masks` | `xylar/MPAS-Tools` |
-| Calibration prototype + docs | `.../MALI-melt-calibration/add-mali-melt-calibration` | `add-mali-melt-calibration` | `xylar/ismip7-antarctic-ocean-forcing` |
+| Calibration prototype + docs | `.../MALI-melt-calibration/add-mali-melt-calibration` | `add-mali-melt-calibration` | `xylar/ismip7-antarctic-ocean-forcing` (temporary; see below) |
 | Ensemble output (28 states x 2 forms) | `.../MALI-melt-calibration/work/ensemble/` | — | — |
 | Remapped forcing (28 states) | `.../MALI-melt-calibration/work/forcing/` | — | — |
 | ISMIP7 source datasets | `/lcrc/group/e3sm/ac.xylar/ismip7/forcing-data/data/AIS/` | — | — |
 
 The worktree is branched from `origin/main` at `b60c7fb26`.
+
+`add-mali-melt-calibration` is a **temporary** branch: it records how this work was done and
+carries the feedback document for the AIS Ocean Forcing focus group, and will not be merged
+upstream.  The mesh-agnostic analysis (`terms.py`, `quadratic.py`, `calibrate.py`) will be
+offered to `ismip7-antarctic-ocean-forcing` separately, from a new focused branch, as the MALI
+worked example.  So do not assume any of that code is upstream when you reach for it.
 
 **Environment.** Xylar is deploying a Compass pixi environment and load script that includes
 Albany. Until then, MALI can be built without Albany for melt-only work
