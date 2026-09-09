@@ -692,14 +692,65 @@ Semi-local wins every draw under every subset, and removing the outlier *strengt
 result.  A newly-added state also verifies against the Python reference to 6.8e-16, and all
 28 runs give finite, physically plausible totals.
 
-**Where that leaves the choice.** Two terms now favour local decisively and one favours
-semi-local decisively, so the evidence has moved from "no signal either way" (F13) to a
-majority for local -- but it is a majority, not a consensus, and J3 is the term about
-sensitivity to ocean warming, which is what a projection extrapolates.  The honest summary is
-that local fits present-day melt *distribution* better (J2 within basins, J4 between shelves)
-while semi-local fits melt *sensitivity* better (J3).
+**Where that leaves the choice.** Two terms favour local decisively and one favours
+semi-local decisively.  But F15 shows J3's verdict is an artefact of *where* it is evaluated,
+and reverses at the parameter one would actually run with -- so the balance is more one-sided
+than this table alone suggests.
 
 Figure: ``mali_melt_term_comparison.png`` in the workspace root.
+
+### F15. At the calibrated parameter, the local form extrapolates better, not worse
+
+`mathiot_warm` is deliberately extreme -- mean draft TF 3.57 K against ~1.25 K for the other
+warm states.  The focus group's intent (Xylar) is to anchor the calibration at the top of the
+range so a quadratic form, which extrapolates badly *because* of its nonlinearity, does not
+run away in the very warm 2300 projections.  That makes "how does each form behave up there"
+the question that matters, and J3 as the protocol defines it does not quite answer it.
+
+**The J3 verdict depends on where it is evaluated, and reverses.**
+
+| J3 evaluated with... | local | semi-local | winner |
+|---|---:|---:|---|
+| each form at its **own J3-optimal** parameter | 2148.8 (K=4.44e-5) | 1929.9 (g0=6266) | semi-local by 10.2% |
+| both at their **calibrated** parameter | 3666.7 (K=7.75e-5) | 4435.2 (g0=12200) | **local by 17.3%** |
+
+J3's own optimum sits well below the calibrated value because *both* forms over-predict the
+warming sensitivity, so J3 in isolation pulls the parameter down; the full objective pulls it
+back up via J1, J2 and J4.  At the value actually selected, the local form's smaller
+over-prediction wins.  The protocol's J3 is the first row -- correctly, by its own definition
+-- but the second row is the configuration a projection runs in.  This is exactly the gap
+recorded as feedback item A11: the protocol selects parameters within a module and offers no
+way to compare modules.
+
+**And local amplifies less.** Driving each calibrated form from the present-day climatology to
+the extreme anchor:
+
+| | present day | mathiot_warm | amplification |
+|---|---:|---:|---:|
+| local, K = 7.75e-5 | 1383 Gt/yr | 37,107 Gt/yr | **x26.8** |
+| semi-local, g0 = 12200 | 1198 Gt/yr | 40,270 Gt/yr | **x33.6** |
+
+Counter-intuitive at first -- local squares the *local* thermal forcing, so one expects it to
+blow up harder -- but the semi-local form multiplies every cell by its basin-mean `|<TF>|`,
+so under broad warming it lifts the cold parts of a basin too, while the local form leaves
+them cold.  Semi-local spreads high melt more widely and totals more.  **For the "crazy town"
+concern the local form is the more conservative extrapolator, not the less.**
+
+**A caveat that applies to both, and is arguably the bigger finding.** Neither form
+reproduces the ocean models' warming sensitivity well.  Median modelled/target ratio of the
+warm-minus-cold basin mean, pooled over models:
+
+| basin | 7 (Ross) | 14 (FRIS) | 15 | 8 | 9 | 6 | 4 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| local | 4.30 | 3.58 | 3.71 | 2.04 | 1.40 | −5.72 | −0.15 |
+| semi-local | 3.61 | 2.95 | 4.08 | 2.36 | 1.63 | −4.33 | −0.06 |
+
+Both **over-predict by 3-4x in the large cold-cavity basins** (Ross, Filchner-Ronne), and in
+several basins the modelled response has the *opposite sign* to the ocean models' -- though
+those tend to be basins where the target sensitivity is small, so the ratio is unstable.  A
+quadratic in thermal forcing does not capture how a cold cavity's circulation responds to
+warming.  Anchoring on an extreme state limits the damage, which is the point of including
+one, but no choice of `K` fixes the basin-to-basin pattern.
 
 ---
 
