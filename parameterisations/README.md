@@ -15,6 +15,8 @@ Second example is PICO, based on simulations done with PISM-PICO. If you would l
 
 Third example is LADDIE. If you would like access to the data required to run the examples, please contact Erwin.
 
+Fourth example is MALI, in [`mali/`](mali/). It differs from the others in that the melt rates are calculated by the ice-sheet model itself, on its own unstructured, variable-resolution mesh, rather than independently in Python. It calibrates both the local and the semi-local quadratic forms, and includes a mesh-agnostic rewrite of `calculate_term1..4` that takes a cell-area array instead of a scalar resolution, so that the same functions serve structured grids and unstructured meshes. If you would like access to the MALI melt fields, please contact Xylar.
+
 Toolbox:
 - `calculate_term1`, `calculate_term2`, `calculate_term3`, `calculate_term4`: calculate the different terms
 - `calculate_objective_function`: calculates the optimal parameters specified for a number of samples, with freely chosen weights (see below)
