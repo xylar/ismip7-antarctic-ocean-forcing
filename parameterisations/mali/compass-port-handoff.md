@@ -19,7 +19,7 @@ F6, … and each is worth reading before touching the corresponding area.
 |---|---|---|---|
 | **Compass worktree (yours)** | `/home/ac.xylar/compass/add-ismip7-calibration` | `add-ismip7-calibration` | not yet |
 | Compass main checkout | `/home/ac.xylar/compass/main` | `main` | — |
-| MALI with the Burgard melt module | `.../MALI-melt-calibration/mali/add-burgard-melt-param` | `mali/add-burgard-melt-param` | `xylar/E3SM` |
+| MALI with the Burgard melt module | `.../MALI-melt-calibration/mali/add-burgard-melt-param` | `mali/add-burgard-melt-param` | **merged** into `MALI-Dev/develop` (PR #191, `013c387242`) |
 | Mask tool | `~/mpas_work/MPAS-Tools/add-ismip7-mali-masks` | `add-ismip7-mali-masks` | `xylar/MPAS-Tools` |
 | Calibration prototype + docs | `.../MALI-melt-calibration/add-mali-melt-calibration` | `add-mali-melt-calibration` | `xylar/ismip7-antarctic-ocean-forcing` (temporary; see below) |
 | Ensemble output (28 states x 2 forms) | `.../MALI-melt-calibration/work/ensemble/` | — | — |
@@ -68,13 +68,12 @@ Report what you find before refactoring: consolidation that touches `ismip7_forc
 
 ## 3. MALI build
 
-Use **`mali/add-burgard-melt-param`** rather than the Compass `MALI-Dev` submodule.
+The melt module is **merged into `MALI-Dev/develop`** (PR #191, merge commit `013c387242`,
+2026-09-16), so there is no longer a reason to build from the feature branch. Update the Compass
+`MALI-Dev` submodule to a `develop` commit at or after that merge and build from it. The
+`mali/add-burgard-melt-param` worktree is kept only for reference.
 
-Convenient fact: the submodule currently points at `ee0f74cc35`, which is *exactly* the
-merge-base of that branch. Pointing it at the branch is a clean fast-forward of two commits, not
-a divergence.
-
-The branch adds `config_basal_mass_bal_float = 'ismip7'`: the Burgard **local** quadratic,
+The merged change adds `config_basal_mass_bal_float = 'ismip7'`: the Burgard **local** quadratic,
 protocol Eq. (1). The semi-local form was deliberately **not** implemented — with constant
 salinity it is algebraically identical to the ISMIP6 non-local method MALI already has (F7).
 Use `'ismip6'` for that behaviour. Both paths exist, so the port does not need the
